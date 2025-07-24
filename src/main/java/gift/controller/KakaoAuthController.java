@@ -22,5 +22,11 @@ public class KakaoAuthController {
         var tokenResponse = kakaoAuthService.getAccessToken(code);
         return ResponseEntity.ok("Access Token: " + tokenResponse.access_token());
     }
+
+    @GetMapping("/auth/kakao/user-info")
+    public ResponseEntity<String> getUserInfo(@RequestParam String token) {
+        var userInfo = kakaoAuthService.getUserInfo(token);
+        return ResponseEntity.ok("User ID: " + userInfo.id());
+    }
 }
 

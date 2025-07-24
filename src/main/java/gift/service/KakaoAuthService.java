@@ -2,6 +2,7 @@ package gift.service;
 
 import gift.config.KakaoProperties;
 import gift.dto.KakaoTokenResponse;
+import gift.dto.KakaoUserResponse;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -49,4 +50,23 @@ public class KakaoAuthService {
             super(message);
         }
     }
+
+    public KakaoUserResponse getUserInfo(String accessToken) {
+        String url = "https://kapi.kakao.com/v2/user/me";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<KakaoUserResponse> response = restTemplate.exchange(
+                    url, HttpMethod.GET, request, KakaoUserResponse.class
+            );
+            return response.getBody();
+        } catch (HttpClientErrorException e) {
+            throw new KakaoAuthException("사용자 정보 조회 실패: " + e.getResponseBodyAsString());
+        }
+    }
+
 }
