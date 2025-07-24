@@ -1,33 +1,20 @@
-# spring-gift-enhancement
+# spring-gift-order
 
 ## 0단계 - 기본 코드 준비
 
 ## 1단계 - 구현할 기능 목록
 
-- [x] Member 엔티티를 작성하고 JPA 매핑
-- [x] Product 엔티티를 작성하고 JPA 매핑
-- [x] Wish 엔티티를 작성하고 JPA 매핑 (Member와 Product와의 연관관계 포함)
-- [x] MemberRepository 작성
-- [x] ProductRepository 작성
-- [x] WishRepository 작성
-- [x] Member 엔티티 저장/조회 테스트 작성
-- [x] Product 엔티티 저장/조회 테스트 작성
-- [x] Wish 엔티티 저장/조회 테스트 작성
+- [x] 카카오 인가 코드 요청 URL 생성
+- [x] 인가 코드로 리디렉션 받을 URI 설정 및 컨트롤러 생성
+- [x] 인가 코드로 액세스 토큰 요청 (POST /oauth/token)
+- [x] 액세스 토큰 응답 파싱 (KakaoTokenResponse)
+- [x] 카카오 설정 정보 외부 설정 파일로 분리 (client-id, redirect-uri 등)
+- [x] 인가 코드 및 토큰 요청 예외 처리 (403, 400 등)
+- [ ] (선택) 로그인 성공 시 사용자에게 액세스 토큰 응답
 
-## 2단계 - 구현할 기능 목록
-- [x] 상품 조회 페이지네이션
-- [x] 위시리스트 조회 페이지네이션
+###  카카오 인가 코드 요청 URL
+https://kauth.kakao.com/oauth/authorize?scope=talk_message&response_type=code&redirect_uri=http://localhost:8080/auth/kakao/callback&client_id=YOUR_CLIENT_ID
 
-## 3단계 - 구현할 기능 목록
-
-- [x] 상품에 옵션 추가 기능
-    - 옵션 이름: 공백 포함 50자 제한
-    - 옵션 이름 허용 특수 문자: ( ), [ ], +, -, &, /, _
-    - 옵션 수량: 1개 이상 1억 미만
-    - 동일 상품 내 옵션 이름 중복 불가
-- [x] 상품 조회 시 옵션 리스트 조회 기능 (API: GET /api/products/{productId}/options)
-- [x] 옵션 수량 차감 기능 (서비스 또는 엔티티 내에서만 구현, API 없음)
-- [x] (선택) 관리자 화면에서 옵션 추가 기능
 
 
 
