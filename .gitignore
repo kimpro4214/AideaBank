@@ -38,12 +38,6 @@ out/
 
 ### Mac OS ###
 .DS_Store
-
-# application 설정 보호
-/src/main/resources/application*.properties
-
-# application-example.properties
-kakao.client-id=YOUR_CLIENT_ID
-kakao.redirect-uri=http://localhost:8080/auth/kakao/callback
+.env
 
 
