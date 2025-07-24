@@ -12,5 +12,9 @@
 - [ ] 인가 코드 및 토큰 요청 예외 처리 (403, 400 등)
 - [ ] (선택) 로그인 성공 시 사용자에게 액세스 토큰 응답
 
+###  카카오 인가 코드 요청 URL
+https://kauth.kakao.com/oauth/authorize?scope=talk_message&response_type=code&redirect_uri=http://localhost:8080/auth/kakao/callback&client_id=YOUR_CLIENT_ID
+
+
 
 
