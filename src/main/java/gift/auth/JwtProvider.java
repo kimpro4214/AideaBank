@@ -3,6 +3,7 @@ package gift.auth;
 import gift.entity.Member;
 import gift.exception.unauthorized.WrongHeaderException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,4 +35,14 @@ public class JwtProvider {
             throw new WrongHeaderException();
         }
     }
+
+    public String createKakaoToken(Long kakaoId) {
+        return Jwts.builder()
+                .subject(kakaoId.toString())
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()))
+                .compact();
+    }
+
+
+
 }
