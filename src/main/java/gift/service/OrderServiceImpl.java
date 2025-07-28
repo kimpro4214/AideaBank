@@ -5,6 +5,7 @@ import gift.dto.OrderResponseDto;
 import gift.entity.Member;
 import gift.entity.Order;
 import gift.entity.ProductOption;
+import gift.repository.MemberRepository;
 import gift.repository.OrderRepository;
 import gift.repository.ProductOptionRepository;
 import gift.repository.WishRepository;
@@ -20,20 +21,26 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final WishRepository wishRepository;
     private final KakaoMessageService kakaoMessageService;
+    private final MemberRepository memberRepository;
 
     public OrderServiceImpl(ProductOptionRepository optionRepository,
                             OrderRepository orderRepository,
                             WishRepository wishRepository,
-                            KakaoMessageService kakaoMessageService) {
+                            KakaoMessageService kakaoMessageService,
+                            MemberRepository memberRepository) {
         this.optionRepository = optionRepository;
         this.orderRepository = orderRepository;
         this.wishRepository = wishRepository;
         this.kakaoMessageService = kakaoMessageService;
+        this.memberRepository = memberRepository;
     }
 
     @Override
     @Transactional
-    public OrderResponseDto createOrder(OrderRequestDto request, Member member) {
+    public OrderResponseDto createOrder(OrderRequestDto request, Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
         ProductOption option = optionRepository.findById(request.optionId())
                 .orElseThrow(() -> new IllegalArgumentException("상품 옵션을 찾을 수 없습니다."));
 

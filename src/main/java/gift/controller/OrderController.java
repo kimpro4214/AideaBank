@@ -19,10 +19,13 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponseDto> createOrder(@RequestBody OrderRequestDto request,
-                                                     @RequestHeader("X-MEMBER-ID") Member member) {
-        OrderResponseDto response = orderService.createOrder(request, member);
+    public ResponseEntity<OrderResponseDto> createOrder(
+            @RequestBody OrderRequestDto request,
+            @RequestHeader("X-MEMBER-ID") Long memberId
+    ) {
+        OrderResponseDto response = orderService.createOrder(request, memberId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
 }
 

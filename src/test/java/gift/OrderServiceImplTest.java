@@ -3,6 +3,7 @@ package gift;
 import gift.dto.OrderRequestDto;
 import gift.dto.OrderResponseDto;
 import gift.entity.*;
+import gift.repository.MemberRepository;
 import gift.repository.OrderRepository;
 import gift.repository.ProductOptionRepository;
 import gift.repository.WishRepository;
@@ -23,6 +24,8 @@ class OrderServiceImplTest {
     private OrderRepository orderRepository;
     private WishRepository wishRepository;
     private KakaoMessageService kakaoMessageService;
+    private MemberRepository memberRepository;
+
 
     private OrderServiceImpl orderService;
 
@@ -32,12 +35,21 @@ class OrderServiceImplTest {
         orderRepository = mock(OrderRepository.class);
         wishRepository = mock(WishRepository.class);
         kakaoMessageService = mock(KakaoMessageService.class);
+        memberRepository = mock(MemberRepository.class);
 
-        orderService = new OrderServiceImpl(optionRepository, orderRepository, wishRepository, kakaoMessageService);
+
+        orderService = new OrderServiceImpl(
+                optionRepository,
+                orderRepository,
+                wishRepository,
+                kakaoMessageService,
+                memberRepository
+        );
     }
 
     @Test
     void 주문_생성_성공_및_메시지전송_검증() {
+        // Given
         Product product = new Product("상품", "image.jpg", 10000);
         setId(product, 101L);
 
@@ -51,21 +63,24 @@ class OrderServiceImplTest {
 
         OrderRequestDto request = new OrderRequestDto(1L, 2, "잘 부탁드립니다.");
 
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(optionRepository.findById(1L)).thenReturn(Optional.of(option));
-
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             setId(order, 100L);
             return order;
         });
 
-        OrderResponseDto response = orderService.createOrder(request, member);
+        // When
+        OrderResponseDto response = orderService.createOrder(request, 1L);
 
+        // Then
         assertThat(response.optionId()).isEqualTo(1L);
         assertThat(response.quantity()).isEqualTo(2);
         assertThat(response.message()).isEqualTo("잘 부탁드립니다.");
         assertThat(response.orderDateTime()).isBeforeOrEqualTo(LocalDateTime.now());
 
+        verify(memberRepository).findById(1L);
         verify(optionRepository).findById(1L);
         verify(wishRepository).deleteByMemberAndProduct(member, product);
         verify(orderRepository).save(any(Order.class));

@@ -4,9 +4,9 @@ import gift.dto.OrderResponseDto;
 import gift.entity.Member;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 @Service
 public class KakaoMessageServiceImpl implements KakaoMessageService {
@@ -25,8 +25,10 @@ public class KakaoMessageServiceImpl implements KakaoMessageService {
 
         String templateObject = buildTemplate(order);
 
-        HttpEntity<Map<String, String>> request = new HttpEntity<>(
-                Map.of("template_object", templateObject), headers);
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("template_object", templateObject);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         ResponseEntity<String> response = restTemplate.postForEntity(KAKAO_API_URL, request, String.class);
 

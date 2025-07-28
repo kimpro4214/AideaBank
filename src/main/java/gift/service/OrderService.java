@@ -5,5 +5,5 @@ import gift.dto.OrderResponseDto;
 import gift.entity.Member;
 
 public interface OrderService {
-    OrderResponseDto createOrder(OrderRequestDto request, Member member);
+    OrderResponseDto createOrder(OrderRequestDto request, Long memberId);
 }
