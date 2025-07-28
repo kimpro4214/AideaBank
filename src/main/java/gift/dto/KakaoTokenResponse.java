@@ -11,4 +11,3 @@ public record KakaoTokenResponse(
         @JsonProperty("refresh_token_expires_in") long refreshTokenExpiresIn
 ) {}
 
-
