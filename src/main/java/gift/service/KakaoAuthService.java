@@ -4,6 +4,7 @@ import gift.auth.JwtProvider;
 import gift.config.KakaoProperties;
 import gift.dto.KakaoTokenResponse;
 import gift.dto.KakaoUserResponse;
+import gift.exception.KakaoAuthException;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -70,12 +71,6 @@ public class KakaoAuthService {
         KakaoUserResponse userInfo = getUserInfo(accessToken);
         Long kakaoId = userInfo.id();
         return jwtProvider.createKakaoToken(kakaoId);
-    }
-
-    public static class KakaoAuthException extends RuntimeException {
-        public KakaoAuthException(String message) {
-            super(message);
-        }
     }
 
 }
