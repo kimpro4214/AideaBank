@@ -2,6 +2,7 @@ package gift.controller;
 
 import gift.dto.OrderRequestDto;
 import gift.dto.OrderResponseDto;
+import gift.entity.Member;
 import gift.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +20,8 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(@RequestBody OrderRequestDto request,
-                                                     @RequestHeader("X-MEMBER-ID") Long memberId) {
-        OrderResponseDto response = orderService.createOrder(request, memberId);
+                                                     @RequestHeader("X-MEMBER-ID") Member member) {
+        OrderResponseDto response = orderService.createOrder(request, member);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

@@ -9,6 +9,7 @@ import gift.repository.OrderRepository;
 import gift.repository.ProductOptionRepository;
 import gift.repository.WishRepository;
 import gift.service.OrderService;
+import gift.service.KakaoMessageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +19,16 @@ public class OrderServiceImpl implements OrderService {
     private final ProductOptionRepository optionRepository;
     private final OrderRepository orderRepository;
     private final WishRepository wishRepository;
+    private final KakaoMessageService kakaoMessageService;
 
     public OrderServiceImpl(ProductOptionRepository optionRepository,
                             OrderRepository orderRepository,
-                            WishRepository wishRepository) {
+                            WishRepository wishRepository,
+                            KakaoMessageService kakaoMessageService) {
         this.optionRepository = optionRepository;
         this.orderRepository = orderRepository;
         this.wishRepository = wishRepository;
+        this.kakaoMessageService = kakaoMessageService;
     }
 
     @Override
@@ -40,12 +44,16 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.create(option, member.getId(), request.quantity(), request.message());
         orderRepository.save(order);
 
-        return new OrderResponseDto(
+        OrderResponseDto response = new OrderResponseDto(
                 order.getId(),
                 option.getId(),
                 order.getQuantity(),
                 order.getOrderDateTime(),
                 order.getMessage()
         );
+
+        kakaoMessageService.sendOrderMessageToMe(member, response);
+
+        return response;
     }
 }
