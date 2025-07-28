@@ -18,7 +18,7 @@ public class KakaoAuthController {
     @GetMapping("/callback")
     public ResponseEntity<String> kakaoCallback(@RequestParam String code) {
         KakaoTokenResponse tokenResponse = kakaoAuthService.getAccessToken(code);
-        String jwt = kakaoAuthService.loginAndGenerateToken(tokenResponse.access_token());
+        String jwt = kakaoAuthService.loginAndGenerateToken(tokenResponse.accessToken());
         return ResponseEntity.ok(jwt);
     }
 

@@ -20,6 +20,9 @@ public class Member {
     @Column(nullable = false)
     private Role role;
 
+    @Column(name = "access_token")
+    private String accessToken;
+
     protected Member() {
     }
 
@@ -43,5 +46,13 @@ public class Member {
 
     public Role getRole() {
         return role;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void updateAccessToken(String accessToken) {
+        this.accessToken = accessToken;
     }
 }

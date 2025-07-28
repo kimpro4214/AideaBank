@@ -4,7 +4,6 @@ import gift.exception.forbidden.EmailNotFoundException;
 import gift.exception.forbidden.WrongPasswordException;
 import gift.exception.unauthorized.WrongHeaderException;
 import gift.exception.forbidden.EmailDuplicateException;
-import gift.service.KakaoAuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -40,8 +39,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("예기치 못한 서버 오류가 발생했습니다.");
     }
 
-    @ExceptionHandler(KakaoAuthService.KakaoAuthException.class)
-    public ResponseEntity<String> handleKakaoAuth(KakaoAuthService.KakaoAuthException e) {
+    @ExceptionHandler(KakaoAuthException.class)
+    public ResponseEntity<String> handleKakaoAuth(KakaoAuthException e) {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body("X 카카오 인증 에러: " + e.getMessage());
