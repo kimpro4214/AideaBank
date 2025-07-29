@@ -1,13 +1,16 @@
 package gift.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+@JsonNaming(SnakeCaseStrategy.class)
 public record KakaoTokenResponse(
-        @JsonProperty("access_token") String accessToken,
-        @JsonProperty("token_type") String tokenType,
-        @JsonProperty("refresh_token") String refreshToken,
-        @JsonProperty("expires_in") long expiresIn,
-        @JsonProperty("scope") String scope,
-        @JsonProperty("refresh_token_expires_in") long refreshTokenExpiresIn
+        String accessToken,
+        String tokenType,
+        String refreshToken,
+        long expiresIn,
+        String scope,
+        long refreshTokenExpiresIn
 ) {}
+
 
