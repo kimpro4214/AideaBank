@@ -5,6 +5,7 @@ import gift.dto.OrderResponseDto;
 import gift.entity.Member;
 import gift.entity.Order;
 import gift.entity.ProductOption;
+import gift.event.OrderCompletedEvent;
 import gift.repository.MemberRepository;
 import gift.repository.OrderRepository;
 import gift.repository.ProductOptionRepository;
@@ -14,6 +15,8 @@ import gift.service.OrderService;
 import gift.service.KakaoMessageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -24,6 +27,7 @@ public class OrderServiceImpl implements OrderService {
     private final KakaoMessageService kakaoMessageService;
     private final MemberRepository memberRepository;
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     public OrderServiceImpl(ProductOptionRepository optionRepository,
@@ -31,13 +35,15 @@ public class OrderServiceImpl implements OrderService {
                             WishRepository wishRepository,
                             KakaoMessageService kakaoMessageService,
                             MemberRepository memberRepository,
-                            MemberService memberService) {
+                            MemberService memberService,
+                            ApplicationEventPublisher eventPublisher) {
         this.optionRepository = optionRepository;
         this.orderRepository = orderRepository;
         this.wishRepository = wishRepository;
         this.kakaoMessageService = kakaoMessageService;
         this.memberRepository = memberRepository;
         this.memberService = memberService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -63,7 +69,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getMessage()
         );
 
-        kakaoMessageService.sendOrderMessageToMe(member, response);
+        eventPublisher.publishEvent(new OrderCompletedEvent(member, response));
 
         return response;
     }
