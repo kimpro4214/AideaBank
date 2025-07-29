@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
+
 
 @Service
 public class KakaoMessageServiceImpl implements KakaoMessageService {
@@ -14,6 +16,9 @@ public class KakaoMessageServiceImpl implements KakaoMessageService {
     private static final String KAKAO_API_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send";
 
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${kakao.base-url}")
+    private String kakaoBaseUrl;
 
     @Override
     public void sendOrderMessageToMe(Member member, OrderResponseDto order) {
@@ -39,15 +44,21 @@ public class KakaoMessageServiceImpl implements KakaoMessageService {
 
     private String buildTemplate(OrderResponseDto order) {
         return """
-        {
-            "object_type": "text",
-            "text": "[주문 완료]\\n상품 옵션 ID: %d\\n수량: %d\\n메시지: %s",
-            "link": {
-                "web_url": "http://localhost:8080",
-                "mobile_web_url": "http://localhost:8080"
-            },
-            "button_title": "확인"
-        }
-        """.formatted(order.optionId(), order.quantity(), order.message());
+    {
+        "object_type": "text",
+        "text": "[주문 완료]\\n상품 옵션 ID: %d\\n수량: %d\\n메시지: %s",
+        "link": {
+            "web_url": "%s",
+            "mobile_web_url": "%s"
+        },
+        "button_title": "확인"
+    }
+    """.formatted(
+                order.optionId(),
+                order.quantity(),
+                order.message(),
+                kakaoBaseUrl,
+                kakaoBaseUrl
+        );
     }
 }
