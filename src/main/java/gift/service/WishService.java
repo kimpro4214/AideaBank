@@ -20,19 +20,22 @@ public class WishService {
     private final WishRepository wishRepository;
     private final MemberRepository memberRepository;
     private final ProductRepository productRepository;
+    private final MemberService memberService;
+
 
     public WishService(WishRepository wishRepository,
                        MemberRepository memberRepository,
-                       ProductRepository productRepository) {
+                       ProductRepository productRepository,
+                       MemberService memberService) {
         this.wishRepository = wishRepository;
         this.memberRepository = memberRepository;
         this.productRepository = productRepository;
+        this.memberService = memberService;
     }
 
     @Transactional
     public void addWish(Long memberId, Long productId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("Member not found with id: " + memberId));
+        Member member = memberService.getById(memberId);
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NoSuchElementException("Product not found with id: " + productId));
@@ -43,8 +46,7 @@ public class WishService {
 
     @Transactional(readOnly = true)
     public Page<WishResponseDto> getWishes(Long memberId, Pageable pageable) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("Member not found with id: " + memberId));
+        Member member = memberService.getById(memberId);
 
         return wishRepository.findAllByMember(member, pageable)
                 .map(WishResponseDto::new);
