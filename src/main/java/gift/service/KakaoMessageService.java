@@ -4,5 +4,5 @@ import gift.dto.OrderResponseDto;
 import gift.entity.Member;
 
 public interface KakaoMessageService {
-    void sendOrderMessageToMe(Member member, OrderResponseDto order);
+    void sendOrderMessage(Member member, OrderResponseDto order);
 }

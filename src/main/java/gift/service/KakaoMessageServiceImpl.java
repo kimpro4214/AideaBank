@@ -21,7 +21,7 @@ public class KakaoMessageServiceImpl implements KakaoMessageService {
     private String kakaoBaseUrl;
 
     @Override
-    public void sendOrderMessageToMe(Member member, OrderResponseDto order) {
+    public void sendOrderMessage(Member member, OrderResponseDto order) {
         String accessToken = member.getAccessToken();
 
         HttpHeaders headers = new HttpHeaders();

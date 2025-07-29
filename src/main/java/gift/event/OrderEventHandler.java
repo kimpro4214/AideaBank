@@ -17,6 +17,6 @@ public class OrderEventHandler {
 
     @TransactionalEventListener
     public void handle(OrderCompletedEvent event) {
-        kakaoMessageService.sendOrderMessageToMe(event.getMember(), event.getResponse());
+        kakaoMessageService.sendOrderMessage(event.getMember(), event.getResponse());
     }
 }

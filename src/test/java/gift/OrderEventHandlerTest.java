@@ -39,6 +39,6 @@ class OrderEventHandlerTest {
 
         eventPublisher.publishEvent(new OrderCompletedEvent(member, response));
 
-        verify(kakaoMessageService, timeout(1000)).sendOrderMessageToMe(eq(member), eq(response));
+        verify(kakaoMessageService, timeout(1000)).sendOrderMessage(eq(member), eq(response));
     }
 }
