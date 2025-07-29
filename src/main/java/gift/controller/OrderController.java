@@ -1,5 +1,7 @@
 package gift.controller;
 
+import gift.auth.LoginMember;
+import gift.auth.LoginMemberInfoDto;
 import gift.dto.OrderRequestDto;
 import gift.dto.OrderResponseDto;
 import gift.entity.Member;
@@ -21,8 +23,9 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(
             @RequestBody OrderRequestDto request,
-            @RequestHeader("X-MEMBER-ID") Long memberId
+            @LoginMember LoginMemberInfoDto loginMember
     ) {
+        Long memberId = loginMember.id();
         OrderResponseDto response = orderService.createOrder(request, memberId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
