@@ -48,7 +48,7 @@ public class OrderServiceImpl implements OrderService {
 
         wishRepository.deleteByMemberAndProduct(member, option.getProduct());
 
-        Order order = Order.create(option, member.getId(), request.quantity(), request.message());
+        Order order = Order.create(option, member, request.quantity(), request.message());
         orderRepository.save(order);
 
         OrderResponseDto response = new OrderResponseDto(
