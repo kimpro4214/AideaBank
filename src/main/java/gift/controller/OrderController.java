@@ -1,10 +1,7 @@
 package gift.controller;
 
-<<<<<<< HEAD
 import gift.auth.LoginMember;
 import gift.auth.LoginMemberInfoDto;
-=======
->>>>>>> e97bd099681797692d4e965b1bd26e1381b0b9de
 import gift.dto.OrderRequestDto;
 import gift.dto.OrderResponseDto;
 import gift.entity.Member;
