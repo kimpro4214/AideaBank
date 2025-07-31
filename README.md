@@ -26,4 +26,11 @@ https://kauth.kakao.com/oauth/authorize?scope=talk_message&response_type=code&re
 - [x] 주문 생성 성공 시 201 응답 반환
 - [x] 응답 본문에 주문 정보 포함 (id, optionId, quantity, orderDateTime, message)
 
+## 3단계 - 구현할 기능 목록
+- [x] 선물하기 서비스 EC2 배포 환경 구성
+- [x] 배포 자동화를 위한 Shell 스크립트 작성
+- [x] Spring 애플리케이션 EC2에 실행
+- [x] 클라이언트 연동을 위한 CORS 설정
+- [x] 배포된 서버에서 API 정상 동작 확인
+
 
