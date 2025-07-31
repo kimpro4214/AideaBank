@@ -6,6 +6,7 @@ import gift.entity.Member;
 import gift.entity.Order;
 import gift.entity.ProductOption;
 import gift.event.OrderCompletedEvent;
+import gift.event.OrderEventPublisher;
 import gift.repository.MemberRepository;
 import gift.repository.OrderRepository;
 import gift.repository.ProductOptionRepository;
@@ -28,6 +29,8 @@ public class OrderServiceImpl implements OrderService {
     private final MemberRepository memberRepository;
     private final MemberService memberService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderEventPublisher orderEventPublisher;
+
 
 
     public OrderServiceImpl(ProductOptionRepository optionRepository,
@@ -36,7 +39,8 @@ public class OrderServiceImpl implements OrderService {
                             KakaoMessageService kakaoMessageService,
                             MemberRepository memberRepository,
                             MemberService memberService,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            OrderEventPublisher orderEventPublisher) {
         this.optionRepository = optionRepository;
         this.orderRepository = orderRepository;
         this.wishRepository = wishRepository;
@@ -44,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
         this.memberRepository = memberRepository;
         this.memberService = memberService;
         this.eventPublisher = eventPublisher;
+        this.orderEventPublisher = orderEventPublisher;
     }
 
     @Override
@@ -69,7 +74,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getMessage()
         );
 
-        eventPublisher.publishEvent(new OrderCompletedEvent(member, response));
+        orderEventPublisher.publishOrderCompletedEvent(member, response);
 
         return response;
     }
