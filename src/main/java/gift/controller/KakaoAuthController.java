@@ -3,12 +3,11 @@ package gift.controller;
 import gift.config.KakaoProperties;
 import gift.dto.KakaoTokenResponse;
 import gift.service.KakaoAuthService;
-import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 
-import java.net.URI;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/auth/kakao")
@@ -17,30 +16,32 @@ public class KakaoAuthController {
     private final KakaoAuthService kakaoAuthService;
     private final KakaoProperties properties;
 
-
     public KakaoAuthController(KakaoAuthService kakaoAuthService, KakaoProperties properties) {
         this.kakaoAuthService = kakaoAuthService;
         this.properties = properties;
     }
 
     @GetMapping("/login")
-    public ResponseEntity<Void> redirectToKakaoLogin() {
-        URI redirectUri = URI.create(
+    public void redirectToKakaoLogin(HttpServletResponse response) throws IOException {
+        String redirectUri =
                 "https://kauth.kakao.com/oauth/authorize" +
                         "?client_id=" + properties.getClientId() +
                         "&redirect_uri=" + properties.getRedirectUri() +
-                        "&response_type=code"
-        );
-        HttpHeaders headers = new HttpHeaders();
-        headers.setLocation(redirectUri);
-        return new ResponseEntity<>(headers, HttpStatus.FOUND);
+                        "&response_type=code";
+
+        response.sendRedirect(redirectUri);
     }
 
     @GetMapping("/callback")
-    public ResponseEntity<String> kakaoCallback(@RequestParam String code) {
+    public void kakaoCallback(@RequestParam String code, HttpServletResponse response) throws IOException {
         KakaoTokenResponse tokenResponse = kakaoAuthService.getAccessToken(code);
         String jwt = kakaoAuthService.loginAndGenerateToken(tokenResponse.accessToken());
-        return ResponseEntity.ok(jwt);
-    }
 
+        Cookie cookie = new Cookie("jwtToken", jwt);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+
+        response.sendRedirect("/");
+    }
 }
