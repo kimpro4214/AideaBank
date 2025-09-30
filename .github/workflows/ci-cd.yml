@@ -1,74 +1,116 @@
-name: CI/CD Pipeline
+name: Deploy Spring Boot App to EC2
 
 on:
   push:
-    branches: [ "develop" ]   # develop 브랜치에 push 될 때 실행
+    branches: [develop]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      # 1) Checkout
+      - name: Checkout
+        uses: actions/checkout@v3
 
+      # 2) JDK 21
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
-          distribution: temurin
-          java-version: 21
-          cache: gradle
+          java-version: '21'
+          distribution: 'temurin'
 
+      # 3) Gradle cache
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4) gradlew 실행 권한
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
-      - name: Build with Gradle (skip tests)
+      # 5) Build (skip tests)
+      - name: Build with Gradle
         run: ./gradlew clean build -x test
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: spring-boot-app
-          path: build/libs/app.jar   # ✅ 항상 app.jar만 업로드
+      # 6) Find jar (실행 가능 JAR만 추출)
+      - name: Find built JAR
+        id: find_jar
+        run: |
+          JAR_FILE=$(ls build/libs | grep -E '^(.*SNAPSHOT\.jar|app\.jar)$' | grep -v plain | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "❌ No executable JAR found"
+            exit 1
+          fi
+          echo "JAR_FILE=$JAR_FILE" >> $GITHUB_OUTPUT
+          echo "Found JAR: $JAR_FILE"
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/develop'   # develop 브랜치일 때만 배포 실행
-
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: spring-boot-app
-          path: build/libs
-
-      - name: Prepare app directory on EC2
+      # 7) Prepare EC2 target dir
+      - name: Prepare EC2 directory
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: mkdir -p /home/ubuntu/app/build/libs
+          script: mkdir -p /home/${{ secrets.SERVER_USER }}/app
 
+      # 8) Copy jar to EC2
       - name: Copy jar to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "build/libs/app.jar"   # ✅ app.jar만 복사
-          target: "/home/ubuntu/app/build/libs/"
+          source: build/libs/${{ steps.find_jar.outputs.JAR_FILE }}
+          target: /home/${{ secrets.SERVER_USER }}/app/
+          overwrite: true
 
-      - name: Deploy to EC2
+      # 9) Deploy & run on EC2
+      - name: Deploy & Run
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            pkill -f 'java -jar' || true
-            nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app/app.log 2>&1 &
+            set -euo pipefail
+            APP_DIR="/home/${USER}/app"
+            JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"
+            APP_JAR="app.jar"
+            LOG_DIR="${APP_DIR}/logs"
+
+            cd $APP_DIR
+
+            # 기존 프로세스 종료
+            EXISTING_PID=$(lsof -t -i:8080 || true)
+            if [ -n "$EXISTING_PID" ]; then
+              echo "Stopping PID $EXISTING_PID"
+              kill -15 $EXISTING_PID || true
+              sleep 5
+            fi
+
+            # 심볼릭 링크 생성
+            ln -sfn "$JAR_NAME" "$APP_JAR"
+
+            mkdir -p "$LOG_DIR"
+            LOG_FILE="$LOG_DIR/$(date +'%Y-%m-%d_%H-%M-%S').log"
+
+            echo "Starting $APP_JAR ..."
+            nohup java -jar "$APP_JAR" > "$LOG_FILE" 2>&1 &
+
+            sleep 10
+            NEW_PID=$(lsof -t -i:8080 || true)
+            if [ -n "$NEW_PID" ]; then
+              echo "✅ Started successfully. PID=$NEW_PID"
+            else
+              echo "❌ Failed to start. Showing logs:"
+              tail -n 100 "$LOG_FILE" || true
+              exit 1
+            fi
