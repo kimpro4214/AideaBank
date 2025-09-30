@@ -44,6 +44,7 @@ jobs:
       - name: Find built JAR
         id: find_jar
         run: |
+          set -euo pipefail
           JAR_FILE=$(ls build/libs | grep -E '\.jar$' | grep -v plain | head -n 1)
           if [ -z "$JAR_FILE" ]; then
             echo "❌ No executable JAR found in build/libs"
@@ -70,6 +71,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: build/libs/${{ steps.find_jar.outputs.JAR_FILE }}
           target: /home/${{ secrets.SERVER_USER }}/app/
+          # build/libs/ 경로를 벗겨서 파일명만 전송
           strip_components: 2
 
       # 9) Deploy & run on EC2
@@ -81,14 +83,14 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -euo pipefail
-            APP_DIR="/home/${USER}/app"
-            JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"
-            APP_JAR="app.jar"
+
+            APP_DIR="/home/${{ secrets.SERVER_USER }}/app"
+            JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"   # 예: app-1.2.3.jar 또는 app.jar
+            APP_JAR="app.jar"                                   # 서비스가 바라볼 고정 이름
             LOG_DIR="${APP_DIR}/logs"
 
-            cd $APP_DIR
-            
-            # JAR 파일 확인
+            cd "$APP_DIR"
+
             echo "Checking for JAR file: $JAR_NAME"
             if [ ! -f "$JAR_NAME" ]; then
               echo "❌ JAR file not found: $JAR_NAME"
@@ -97,30 +99,41 @@ jobs:
               exit 1
             fi
 
-            # 기존 프로세스 종료
-            EXISTING_PID=$(lsof -t -i:8080 || true)
+            # 기존 8080 프로세스 종료
+            EXISTING_PID="$(lsof -t -i:8080 || true)"
             if [ -n "$EXISTING_PID" ]; then
               echo "Stopping PID $EXISTING_PID"
-              kill -15 $EXISTING_PID || true
+              kill -15 "$EXISTING_PID" || true
               sleep 5
             fi
 
-            # 심볼릭 링크 생성
-            ln -sfn "$JAR_NAME" "$APP_JAR"
+            # 고정 링크(app.jar) 만들기 - 동일 파일/경로면 건너뜀
+            if [ "$JAR_NAME" != "$APP_JAR" ]; then
+              SRC_REAL="$(readlink -f "$JAR_NAME")"
+              DST_REAL="$(readlink -f "$APP_JAR" 2>/dev/null || echo "")"
+              if [ "$SRC_REAL" != "$DST_REAL" ]; then
+                ln -sfn "$JAR_NAME" "$APP_JAR"
+              fi
+            else
+              # 이름 자체가 같으면 링크 불필요
+              :
+            fi
 
             # 로그 디렉토리 준비
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/$(date +'%Y-%m-%d_%H-%M-%S').log"
 
             echo "Starting $APP_JAR ..."
-            nohup java -jar "$APP_JAR" > "$LOG_FILE" 2>&1 &
+            # 필요 시 JAVA_OPTS를 GitHub Secrets/Env로 주입 가능
+            nohup java ${JAVA_OPTS:-} -jar "$APP_JAR" > "$LOG_FILE" 2>&1 &
 
+            # 기동 확인
             sleep 10
-            NEW_PID=$(lsof -t -i:8080 || true)
+            NEW_PID="$(lsof -t -i:8080 || true)"
             if [ -n "$NEW_PID" ]; then
               echo "✅ Started successfully. PID=$NEW_PID"
             else
               echo "❌ Failed to start. Showing logs:"
-              tail -n 100 "$LOG_FILE" || true
+              tail -n 200 "$LOG_FILE" || true
               exit 1
             fi
