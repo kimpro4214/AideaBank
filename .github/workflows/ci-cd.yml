@@ -10,18 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
       - name: Checkout
         uses: actions/checkout@v3
 
-      # 2) JDK 21
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      # 3) Gradle cache
       - name: Cache Gradle packages
         uses: actions/cache@v3
         with:
@@ -32,15 +29,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 4) gradlew 실행 권한
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      # 5) Build (skip tests)
       - name: Build with Gradle
         run: ./gradlew clean build -x test
 
-      # 6) Find executable JAR (exclude *-plain.jar)
       - name: Find built JAR
         id: find_jar
         run: |
@@ -53,7 +47,6 @@ jobs:
           echo "JAR_FILE=$JAR_FILE" >> $GITHUB_OUTPUT
           echo "Found JAR: $JAR_FILE"
 
-      # 7) Prepare EC2 target dir
       - name: Prepare EC2 directory
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -62,7 +55,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: mkdir -p /home/${{ secrets.SERVER_USER }}/app
 
-      # 8) Copy jar to EC2
       - name: Copy jar to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -71,10 +63,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: build/libs/${{ steps.find_jar.outputs.JAR_FILE }}
           target: /home/${{ secrets.SERVER_USER }}/app/
-          # build/libs/ 경로를 벗겨서 파일명만 전송
           strip_components: 2
 
-      # 9) Deploy & run on EC2
       - name: Deploy & Run
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -88,22 +78,26 @@ jobs:
             JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"   # 예: app-1.2.3.jar 또는 app.jar
             APP_JAR="app.jar"                                   # 서비스가 바라볼 고정 이름
             LOG_DIR="${APP_DIR}/logs"
+            PORT="${PORT:-8080}"
 
             cd "$APP_DIR"
 
             echo "Checking for JAR file: $JAR_NAME"
             if [ ! -f "$JAR_NAME" ]; then
               echo "❌ JAR file not found: $JAR_NAME"
-              echo "Files in current directory:"
               ls -la
               exit 1
             fi
 
-            # 기존 8080 프로세스 종료
-            EXISTING_PID="$(lsof -t -i:8080 || true)"
-            if [ -n "$EXISTING_PID" ]; then
-              echo "Stopping PID $EXISTING_PID"
-              kill -15 "$EXISTING_PID" || true
+            # 기존 프로세스 종료
+            if command -v ss >/dev/null 2>&1; then
+              OLD_PIDS="$(ss -lptnH "( sport = :$PORT )" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\),.*/\1/p' | sort -u || true)"
+            else
+              OLD_PIDS="$(lsof -t -i:$PORT || true)"
+            fi
+            if [ -n "${OLD_PIDS:-}" ]; then
+              echo "Stopping PIDs: ${OLD_PIDS}"
+              kill -15 ${OLD_PIDS} || true
               sleep 5
             fi
 
@@ -114,26 +108,54 @@ jobs:
               if [ "$SRC_REAL" != "$DST_REAL" ]; then
                 ln -sfn "$JAR_NAME" "$APP_JAR"
               fi
-            else
-              # 이름 자체가 같으면 링크 불필요
-              :
             fi
 
-            # 로그 디렉토리 준비
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/$(date +'%Y-%m-%d_%H-%M-%S').log"
 
             echo "Starting $APP_JAR ..."
-            # 필요 시 JAVA_OPTS를 GitHub Secrets/Env로 주입 가능
+            # SPRING_PROFILES_ACTIVE/JAVA_OPTS는 필요 시 Secrets/Env로 제공
             nohup java ${JAVA_OPTS:-} -jar "$APP_JAR" > "$LOG_FILE" 2>&1 &
 
-            # 기동 확인
-            sleep 10
-            NEW_PID="$(lsof -t -i:8080 || true)"
-            if [ -n "$NEW_PID" ]; then
-              echo "✅ Started successfully. PID=$NEW_PID"
+            # 기동 헬스체크: 최대 60초 재시도
+            echo "Waiting for service on :$PORT ..."
+            START_OK=0
+            for i in $(seq 1 30); do
+              # 프로세스가 죽었는지 먼저 확인
+              if ! pgrep -f "java .*${APP_JAR}" >/dev/null 2>&1; then
+                echo "❌ Process died during startup. Showing logs:"
+                tail -n 200 "$LOG_FILE" || true
+                exit 1
+              fi
+
+              # 우선 Actuator health 시도 → 없으면 루트 페이지로 대체
+              if command -v curl >/dev/null 2>&1; then
+                if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/actuator/health" | grep -q '"status":"UP"'; then
+                  START_OK=1; break
+                fi
+                if curl -fsS --max-time 2 -o /dev/null "http://127.0.0.1:${PORT}/"; then
+                  START_OK=1; break
+                fi
+              fi
+
+              # 네트워크 레벨로 포트 LISTEN 확인 (curl 실패 대비)
+              if command -v ss >/dev/null 2>&1; then
+                if ss -ltn "( sport = :$PORT )" | grep -q LISTEN; then
+                  START_OK=1; break
+                fi
+              else
+                if lsof -i:$PORT >/dev/null 2>&1; then
+                  START_OK=1; break
+                fi
+              fi
+
+              sleep 2
+            done
+
+            if [ "$START_OK" -eq 1 ]; then
+              echo "✅ Service is up on :$PORT"
             else
-              echo "❌ Failed to start. Showing logs:"
+              echo "❌ Service did not become healthy in time. Showing logs:"
               tail -n 200 "$LOG_FILE" || true
               exit 1
             fi
