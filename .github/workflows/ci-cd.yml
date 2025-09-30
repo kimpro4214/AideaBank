@@ -70,7 +70,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: build/libs/${{ steps.find_jar.outputs.JAR_FILE }}
           target: /home/${{ secrets.SERVER_USER }}/app/
-          overwrite: true
+          strip_components: 2
 
       # 9) Deploy & run on EC2
       - name: Deploy & Run
@@ -87,6 +87,15 @@ jobs:
             LOG_DIR="${APP_DIR}/logs"
 
             cd $APP_DIR
+            
+            # JAR 파일 확인
+            echo "Checking for JAR file: $JAR_NAME"
+            if [ ! -f "$JAR_NAME" ]; then
+              echo "❌ JAR file not found: $JAR_NAME"
+              echo "Files in current directory:"
+              ls -la
+              exit 1
+            fi
 
             # 기존 프로세스 종료
             EXISTING_PID=$(lsof -t -i:8080 || true)
