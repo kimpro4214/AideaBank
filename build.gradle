@@ -48,3 +48,8 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// ✅ 실행 가능한 Spring Boot JAR 이름 고정
+bootJar {
+    archiveFileName = 'app.jar'
+}

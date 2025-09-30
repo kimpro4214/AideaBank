@@ -29,7 +29,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
-          path: build/libs/*.jar
+          path: build/libs/app.jar   # ✅ 항상 app.jar만 업로드
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,13 +46,21 @@ jobs:
           name: spring-boot-app
           path: build/libs
 
+      - name: Prepare app directory on EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: mkdir -p /home/ubuntu/app/build/libs
+
       - name: Copy jar to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "build/libs/*.jar"
+          source: "build/libs/app.jar"   # ✅ app.jar만 복사
           target: "/home/ubuntu/app/build/libs/"
 
       - name: Deploy to EC2
@@ -63,4 +71,4 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             pkill -f 'java -jar' || true
-            nohup java -jar /home/ubuntu/app/build/libs/*.jar > /home/ubuntu/app/app.log 2>&1 &
+            nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app/app.log 2>&1 &
