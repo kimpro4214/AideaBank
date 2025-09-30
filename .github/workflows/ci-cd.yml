@@ -40,13 +40,13 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build -x test
 
-      # 6) Find jar (실행 가능 JAR만 추출)
+      # 6) Find executable JAR (exclude *-plain.jar)
       - name: Find built JAR
         id: find_jar
         run: |
-          JAR_FILE=$(ls build/libs | grep -E '^(.*SNAPSHOT\.jar|app\.jar)$' | grep -v plain | head -n 1)
+          JAR_FILE=$(ls build/libs | grep -E '\.jar$' | grep -v plain | head -n 1)
           if [ -z "$JAR_FILE" ]; then
-            echo "❌ No executable JAR found"
+            echo "❌ No executable JAR found in build/libs"
             exit 1
           fi
           echo "JAR_FILE=$JAR_FILE" >> $GITHUB_OUTPUT
@@ -99,6 +99,7 @@ jobs:
             # 심볼릭 링크 생성
             ln -sfn "$JAR_NAME" "$APP_JAR"
 
+            # 로그 디렉토리 준비
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/$(date +'%Y-%m-%d_%H-%M-%S').log"
 
