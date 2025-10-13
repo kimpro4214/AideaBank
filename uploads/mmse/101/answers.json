@@ -1,0 +1,27 @@
+[
+  {
+    "questionId": 1,
+    "questionText": "오늘은 몇 년, 몇 월, 몇 일, 무슨 요일입니까?",
+    "answer": "2025년 10월 13일 월요일"
+  },
+  {
+    "questionId": 4,
+    "questionText": "물건 이름 세 가지를 말해보세요.",
+    "answer": "나무 자동차 모자"
+  },
+  {
+    "questionId": 6,
+    "questionText": "100에서 7을 다섯 번 빼보세요.",
+    "answer": "93 86 79 72 65"
+  },
+  {
+    "questionId": 11,
+    "questionText": "옷은 왜 빨아서 입습니까?",
+    "answer": "깨끗하니까요"
+  },
+  {
+    "questionId": 12,
+    "questionText": "길에서 남의 주민등록증을 주웠을 때 어떻게 하면 쉽게 주인에게 돌려줄 수 있겠습니까?",
+    "answer": "우체국에 가져다 줍니다"
+  }
+]
