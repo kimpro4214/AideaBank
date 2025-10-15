@@ -8,8 +8,9 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 public class MmseSubmitResponse {
-    private Long userId;
-    private String status;
-    private String message; // 자동 채점 결과 포함 (ex: 총점 23점)
-    private Map<String, List<String>> uploaded;
+    private Long userId;                        // 사용자 ID
+    private String status;                      // 상태 (RECEIVED)
+    private String message;                     // 메시지 (총점 표시)
+    private Map<String, Integer> scoresByStage; // 스테이지별 점수 (orientation, memory 등)
+    private Map<String, List<String>> uploaded; // 업로드된 파일 목록
 }
