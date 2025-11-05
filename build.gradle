@@ -15,6 +15,7 @@ java {
 
 repositories {
     mavenCentral()
+    google()
 }
 
 dependencies {
@@ -23,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'com.google.genai:google-genai:1.25.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     // Security & Auth
     implementation 'org.mindrot:jbcrypt:0.4'
