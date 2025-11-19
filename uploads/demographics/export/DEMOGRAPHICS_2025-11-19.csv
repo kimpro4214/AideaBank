@@ -1,0 +1,4 @@
+user_id,PHC_Age_Cognition,PHC_Sex,PHC_Race,PHC_Education,PTHAND,PTMARRY,PTRTYR,PTTLANG,PTPLANG,PTHOME,created_at
+123,null,null,null,null,null,null,null,null,null,null,2025-11-19T14:27:00.236958700
+123,null,null,null,null,null,null,null,null,null,null,2025-11-19T14:28:48.406335800
+123,null,null,null,null,null,null,null,null,null,null,2025-11-19T14:29:54.240695500
