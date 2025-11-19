@@ -7,7 +7,7 @@
 
 ## 🚀 Base URL
 
-http://localhost:8080/api/mmse
+http://98.81.237.57:8080/api/mmse
 
 
 ---
@@ -15,7 +15,7 @@ http://localhost:8080/api/mmse
 # 📌 Endpoints
 
 ## 1) 제출된 MMSE 점수 저장
-### **POST http://localhost:8080/api/mmse/score**
+### **POST http://98.81.237.57:8080/api/mmse/score**
 
 프론트에서 자동 채점한 MMSE-K 점수를 서버로 전송합니다.  
 서버는 데이터를 날짜별 CSV 파일로 저장합니다.
@@ -72,7 +72,7 @@ Content-Type: application/json
 ---
 
 ## 🚀 Base URL
-http://localhost:8080/api/demographics
+http://98.81.237.57:8080/api/demographics
 
 ---
 
@@ -132,7 +132,7 @@ Google Gemini 모델을 통해 **정답 / 오답 판별**을 수행합니다.
 ---
 
 ## 🚀 Base URL
-http://localhost:8080/grade
+http://98.81.237.57:8080/grade
 
 ---
 

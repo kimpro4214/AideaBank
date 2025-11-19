@@ -89,7 +89,7 @@ jobs:
             cd "$APP_DIR"
 
             echo "Checking for JAR file: $JAR_NAME"
-            if [ ! -f "$JRA_NAME" ]; then
+            if [ ! -f "$JAR_NAME" ]; then
               echo "❌ JAR file not found: $JAR_NAME"
               ls -la
               exit 1
