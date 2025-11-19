@@ -74,22 +74,28 @@ jobs:
           script: |
             set -euo pipefail
 
+            # ============================================================
+            # 🔥 핵심: GitHub Secrets → 원격 서버 환경변수 전달
+            # ============================================================
+            export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+            export GOOGLE_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+
             APP_DIR="/home/${{ secrets.SERVER_USER }}/app"
-            JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"   # 예: app-1.2.3.jar 또는 app.jar
-            APP_JAR="app.jar"                                   # 서비스가 바라볼 고정 이름
+            JAR_NAME="${{ steps.find_jar.outputs.JAR_FILE }}"
+            APP_JAR="app.jar"
             LOG_DIR="${APP_DIR}/logs"
             PORT="${PORT:-8080}"
 
             cd "$APP_DIR"
 
             echo "Checking for JAR file: $JAR_NAME"
-            if [ ! -f "$JAR_NAME" ]; then
+            if [ ! -f "$JRA_NAME" ]; then
               echo "❌ JAR file not found: $JAR_NAME"
               ls -la
               exit 1
             fi
 
-            # 기존 프로세스 종료
+            # 🔥 기존 프로세스 종료
             if command -v ss >/dev/null 2>&1; then
               OLD_PIDS="$(ss -lptnH "( sport = :$PORT )" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\),.*/\1/p' | sort -u || true)"
             else
@@ -101,52 +107,29 @@ jobs:
               sleep 5
             fi
 
-            # 고정 링크(app.jar) 만들기 - 동일 파일/경로면 건너뜀
+            # 🔥 app.jar 심볼릭 링크 만들기
             if [ "$JAR_NAME" != "$APP_JAR" ]; then
-              SRC_REAL="$(readlink -f "$JAR_NAME")"
-              DST_REAL="$(readlink -f "$APP_JAR" 2>/dev/null || echo "")"
-              if [ "$SRC_REAL" != "$DST_REAL" ]; then
-                ln -sfn "$JAR_NAME" "$APP_JAR"
-              fi
+              ln -sfn "$JAR_NAME" "$APP_JAR"
             fi
 
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/$(date +'%Y-%m-%d_%H-%M-%S').log"
 
             echo "Starting $APP_JAR ..."
-            # SPRING_PROFILES_ACTIVE/JAVA_OPTS는 필요 시 Secrets/Env로 제공
             nohup java ${JAVA_OPTS:-} -jar "$APP_JAR" > "$LOG_FILE" 2>&1 &
 
-            # 기동 헬스체크: 최대 60초 재시도
+            # 🔥 Health check
             echo "Waiting for service on :$PORT ..."
             START_OK=0
             for i in $(seq 1 30); do
-              # 프로세스가 죽었는지 먼저 확인
               if ! pgrep -f "java .*${APP_JAR}" >/dev/null 2>&1; then
                 echo "❌ Process died during startup. Showing logs:"
                 tail -n 200 "$LOG_FILE" || true
                 exit 1
               fi
 
-              # 우선 Actuator health 시도 → 없으면 루트 페이지로 대체
-              if command -v curl >/dev/null 2>&1; then
-                if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/actuator/health" | grep -q '"status":"UP"'; then
-                  START_OK=1; break
-                fi
-                if curl -fsS --max-time 2 -o /dev/null "http://127.0.0.1:${PORT}/"; then
-                  START_OK=1; break
-                fi
-              fi
-
-              # 네트워크 레벨로 포트 LISTEN 확인 (curl 실패 대비)
-              if command -v ss >/dev/null 2>&1; then
-                if ss -ltn "( sport = :$PORT )" | grep -q LISTEN; then
-                  START_OK=1; break
-                fi
-              else
-                if lsof -i:$PORT >/dev/null 2>&1; then
-                  START_OK=1; break
-                fi
+              if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/actuator/health" | grep -q '"status":"UP"'; then
+                START_OK=1; break
               fi
 
               sleep 2
