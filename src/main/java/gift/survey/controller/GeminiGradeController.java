@@ -26,8 +26,8 @@ public class GeminiGradeController {
     private final Client genAIClient;
     private final String modelName = "gemini-2.5-flash";
 
-    public GeminiGradeController() {
-        this.genAIClient = new Client();
+    public GeminiGradeController(Client genAIClient) {
+        this.genAIClient = genAIClient;
     }
 
     public record GradeReq(int questionId, String sttText) {}
