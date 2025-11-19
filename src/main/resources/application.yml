@@ -40,7 +40,9 @@ kakao:
 mmse:
   upload-dir: uploads/mmse
   tts-base-url: https://cdn.example.com/audio/mmse
+  export-dir: ./uploads/mmse/export
 
 # Gemini API Key 환경 변수로 불러옴
 gemini:
   api-key: ${GEMINI_API_KEY}
+
