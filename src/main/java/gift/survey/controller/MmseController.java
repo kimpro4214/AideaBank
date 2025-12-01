@@ -66,10 +66,11 @@ public class MmseController {
             @RequestBody MmseRawScoreRequest request            // 문항별 점수 + totalScore
     ) {
         mmseService.saveRawMmse(userId, request);
+        mmseService.updateMmseStatusScores(userId, request);
 
         return ResponseEntity.ok(Map.of(
                 "status", "OK",
-                "message", "MMSE raw score stored",
+                "message", "MMSE raw+converted scores stored",
                 "userId", userId
         ));
     }

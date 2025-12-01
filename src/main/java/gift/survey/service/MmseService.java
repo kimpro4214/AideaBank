@@ -3,6 +3,7 @@ package gift.survey.service;
 import gift.survey.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gift.survey.util.CsvUtilMmse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,11 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MmseService {
+
+    private final SurveyService surveyService;
+
 
     @Value("${mmse.upload-dir:${user.dir}/uploads/mmse}")
     private String uploadDir;
@@ -199,4 +204,42 @@ public class MmseService {
     public void saveRawMmse(String userId, MmseRawScoreRequest req) {
         CsvUtilMmse.saveRawMmse(userId, req);
     }
+
+    public void updateMmseStatusScores(String userId, MmseRawScoreRequest req) {
+
+        Map<String, Integer> s = req.getScores();
+
+        // ① 문항 → 영역 매핑
+        int time = s.getOrDefault("mmse-1", 0);
+
+        int registration =
+                s.getOrDefault("mmse-4", 0) +
+                        s.getOrDefault("mmse-5", 0);
+
+        int attention =
+                s.getOrDefault("mmse-6", 0);
+
+        int recall =
+                s.getOrDefault("mmse-7", 0) +
+                        s.getOrDefault("mmse-9", 0);
+
+        int language =
+                s.getOrDefault("mmse-10", 0) +
+                        s.getOrDefault("mmse-11", 0);
+
+        int copy =
+                s.getOrDefault("mmse-12", 0);
+
+        // ② survey_status.csv 에 영역별 점수 저장
+        surveyService.saveMmseScore(userId, "time", time);
+        surveyService.saveMmseScore(userId, "registration", registration);
+        surveyService.saveMmseScore(userId, "attention", attention);
+        surveyService.saveMmseScore(userId, "recall", recall);
+        surveyService.saveMmseScore(userId, "language", language);
+        surveyService.saveMmseScore(userId, "copy", copy);
+
+        // ③ MMSE 설문 완료 처리
+        surveyService.completeSurvey(userId, "mmse");
+    }
+
 }
