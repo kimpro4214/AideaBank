@@ -67,7 +67,7 @@ public class MmseController {
         surveyService.saveMmseScore(anonymousUserId, part, score);
 
         // MMSE 전체 완료 처리
-        surveyService.updateSurveyStatus(anonymousUserId, "mmse", true);
+        surveyService.completeSurvey(anonymousUserId, "mmse");
 
         return ResponseEntity.ok(Map.of(
                 "message", "MMSE score saved",

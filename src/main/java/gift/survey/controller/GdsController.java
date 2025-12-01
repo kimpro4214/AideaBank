@@ -34,7 +34,7 @@ public class GdsController {
         surveyService.saveGdsScore(userId, score);
 
         // GDS 완료 상태 true 로 저장
-        surveyService.updateSurveyStatus(userId, "gds", true);
+        surveyService.completeSurvey(userId, "gds");
 
         // level 계산
         String level;
@@ -64,7 +64,7 @@ public class GdsController {
 
         // CSV 저장 (점수 저장 + 완료 표시)
         surveyService.saveGdsScore(userId, score);
-        surveyService.updateSurveyStatus(userId, "gds", true);
+        surveyService.completeSurvey(userId, "gds");
 
         // stub 응답
         Map<String, Object> mock = new HashMap<>();
