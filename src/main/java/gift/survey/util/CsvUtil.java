@@ -3,59 +3,78 @@ package gift.survey.util;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class CsvUtil {
 
     private static final String FILE_PATH = "src/main/resources/data/survey_status.csv";
 
-    // 신규 유저 Row 생성
+    /**
+     * 신규 유저 Row 생성
+     * 기본 상태: non-start
+     */
     public static void addUser(String userId) {
         try (FileWriter writer = new FileWriter(FILE_PATH, true)) {
+
             writer.write(
-                    userId + ",false,false,false,0,0,0,0,0,0,0\n"
+                    userId + "," +
+                            "non-start," +     // basic_status
+                            "non-start," +     // mmse_status
+                            "non-start," +     // gds_status
+                            "0,0,0,0,0,0,0\n"  // scores
             );
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // basic/mmse/gds 완료 여부 업데이트
-    public static void updateStatus(String userId, String fieldName, boolean value) {
+    /**
+     * 상태 업데이트: basic_status, mmse_status, gds_status
+     * NEW LOGIC:
+     * - allowed values: non-start, in-progress, completed
+     */
+    public static void updateStatus(String userId, String type, String statusValue) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
             List<String> updated = new ArrayList<>();
 
             for (String line : lines) {
+
                 if (line.startsWith(userId + ",")) {
+
                     String[] cols = line.split(",");
 
-                    String val = Boolean.toString(value);
-
-                    switch (fieldName) {
-                        case "basic": cols[1] = val; break;
-                        case "mmse": cols[2] = val; break;
-                        case "gds": cols[3] = val; break;
+                    switch (type) {
+                        case "basic": cols[1] = statusValue; break;
+                        case "mmse": cols[2] = statusValue; break;
+                        case "gds": cols[3] = statusValue; break;
                     }
                     updated.add(String.join(",", cols));
+
                 } else {
                     updated.add(line);
                 }
             }
+
             Files.write(Paths.get(FILE_PATH), updated);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // 점수 업데이트 (GDS, MMSE 각 항목)
+    /**
+     * 점수 저장
+     */
     public static void updateScore(String userId, String scoreField, int score) {
+
         try {
             List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
             List<String> updated = new ArrayList<>();
 
             for (String line : lines) {
+
                 if (line.startsWith(userId + ",")) {
 
                     String[] cols = line.split(",");
@@ -69,9 +88,12 @@ public class CsvUtil {
                         case "mmse_language_score": cols[9] = String.valueOf(score); break;
                         case "mmse_copy_score": cols[10] = String.valueOf(score); break;
                     }
+
                     updated.add(String.join(",", cols));
 
-                } else updated.add(line);
+                } else {
+                    updated.add(line);
+                }
             }
 
             Files.write(Paths.get(FILE_PATH), updated);
@@ -81,8 +103,39 @@ public class CsvUtil {
         }
     }
 
-    // 상태 조회
-    public static String[] getStatus(String userId) {
+    /**
+     * 특정 설문 타입의 상태 조회
+     */
+    public static String getStatus(String userId, String type) {
+
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
+
+            for (String line : lines) {
+
+                if (line.startsWith(userId + ",")) {
+
+                    String[] cols = line.split(",");
+
+                    switch (type) {
+                        case "basic": return cols[1];
+                        case "mmse": return cols[2];
+                        case "gds": return cols[3];
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "non-start";
+    }
+
+    /**
+     * 전체 row 조회 (Service에서 상태/점수 mapping용)
+     */
+    public static String[] getStatusRow(String userId) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
             for (String line : lines) {

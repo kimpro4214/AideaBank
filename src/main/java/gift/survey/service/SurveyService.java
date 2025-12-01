@@ -17,7 +17,7 @@ public class SurveyService {
 
     private final SurveyResponseRepository surveyResponseRepository;
 
-    // 기존: DB에 설문 응답 저장
+    /** 기존: DB 응답 저장 */
     public SurveyResponseResult saveSurveyResponse(SurveyResponse request) {
         request.setSubmittedAt(LocalDateTime.now());
         surveyResponseRepository.save(request);
@@ -30,34 +30,44 @@ public class SurveyService {
                 .build();
     }
 
-    // 신규: 최초 접속 시 CSV row 생성
+    /** 신규: 최초 방문 시 CSV 기본값 생성 */
     public void createUserRow(String userId) {
-        CsvUtil.addUser(userId);
+        CsvUtil.addUser(userId);  // 내부에서 non-start로 기본값 생성
     }
 
-    // 완료 여부 업데이트 (basic, mmse, gds)
-    public void updateSurveyStatus(String userId, String type, boolean completed) {
-        CsvUtil.updateStatus(userId, type, completed);
+    /** 설문 시작 → 상태 = in-progress */
+    public void startSurvey(String userId, String type) {
+        CsvUtil.updateStatus(userId, type, "in-progress");
     }
 
-    // GDS 점수 저장
+    /** 설문 완료 → 상태 = completed */
+    public void completeSurvey(String userId, String type) {
+        String current = CsvUtil.getStatus(userId, type);
+
+        if (current.equals("non-start")) {
+            throw new IllegalStateException("설문을 시작하지 않았습니다.");
+        }
+
+        CsvUtil.updateStatus(userId, type, "completed");
+    }
+
+    /** 점수 저장 */
     public void saveGdsScore(String userId, int score) {
         CsvUtil.updateScore(userId, "gds_score", score);
     }
 
-    // MMSE 점수 저장
     public void saveMmseScore(String userId, String part, int score) {
         CsvUtil.updateScore(userId, part + "_score", score);
     }
 
-    // 상태 조회 (점수 포함)
+    /** 상태 조회 */
     public Map<String, Object> getSurveyStatus(String userId) {
-        String[] s = CsvUtil.getStatus(userId);
+        String[] s = CsvUtil.getStatusRow(userId);
 
         return Map.of(
-                "basic_completed", Boolean.parseBoolean(s[1]),
-                "mmse_completed", Boolean.parseBoolean(s[2]),
-                "gds_completed", Boolean.parseBoolean(s[3]),
+                "basic_status", s[1],
+                "mmse_status", s[2],
+                "gds_status", s[3],
                 "gds_score", Integer.parseInt(s[4]),
                 "mmse_time_score", Integer.parseInt(s[5]),
                 "mmse_registration_score", Integer.parseInt(s[6]),

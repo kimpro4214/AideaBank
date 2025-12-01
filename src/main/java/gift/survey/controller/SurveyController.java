@@ -20,13 +20,13 @@ public class SurveyController {
 
     private final SurveyService surveyService;
 
-    /** 기존 기능: 설문 응답 저장 (POST 유지 — 본문 필요) */
+    /** DB 저장용 (POST 유지) */
     @PostMapping("/responses")
     public SurveyResponseResult submitSurvey(@RequestBody SurveyResponse request) {
         return surveyService.saveSurveyResponse(request);
     }
 
-    /** 최초 방문 → user_id 쿠키 발급 & CSV row 생성 */
+    /** 최초 접속 → user_id 발급 + CSV row 생성 */
     @GetMapping("/init")
     public ResponseEntity<?> initUser(HttpServletResponse response) {
 
@@ -35,7 +35,7 @@ public class SurveyController {
         ResponseCookie cookie = ResponseCookie.from("user_id", uuid)
                 .path("/")
                 .httpOnly(false)
-                .maxAge(60L * 60 * 24 * 30)   // 30일
+                .maxAge(60L * 60 * 24 * 30)  // 30일
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -45,28 +45,28 @@ public class SurveyController {
         return ResponseEntity.ok("user initialized");
     }
 
-    /** 설문 시작 (GET 버전) */
+    /** 설문 시작 — 상태: in-progress */
     @GetMapping("/start")
     public ResponseEntity<?> startSurvey(
             @CookieValue("user_id") String userId,
             @RequestParam("type") String type
     ) {
-        surveyService.updateSurveyStatus(userId, type, false);
-        return ResponseEntity.ok()
-                .header("Cache-Control", "no-store")
-                .body("started");
+        surveyService.startSurvey(userId, type);
+        return ResponseEntity.ok("started");
     }
 
-    /** 설문 완료 (GET 버전) */
+    /** 설문 완료 — 상태: completed */
     @GetMapping("/complete")
     public ResponseEntity<?> completeSurvey(
             @CookieValue("user_id") String userId,
             @RequestParam("type") String type
     ) {
-        surveyService.updateSurveyStatus(userId, type, true);
-        return ResponseEntity.ok()
-                .header("Cache-Control", "no-store")
-                .body("completed");
+        try {
+            surveyService.completeSurvey(userId, type);
+            return ResponseEntity.ok("completed");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     /** 설문 상태 조회 */
