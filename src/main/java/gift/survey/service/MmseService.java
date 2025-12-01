@@ -231,12 +231,12 @@ public class MmseService {
                 s.getOrDefault("mmse-12", 0);
 
         // ② survey_status.csv 에 영역별 점수 저장
-        surveyService.saveMmseScore(userId, "time", time);
-        surveyService.saveMmseScore(userId, "registration", registration);
-        surveyService.saveMmseScore(userId, "attention", attention);
-        surveyService.saveMmseScore(userId, "recall", recall);
-        surveyService.saveMmseScore(userId, "language", language);
-        surveyService.saveMmseScore(userId, "copy", copy);
+        surveyService.saveMmseScore(userId, "mmse_time", time);
+        surveyService.saveMmseScore(userId, "mmse_registration", registration);
+        surveyService.saveMmseScore(userId, "mmse_attention", attention);
+        surveyService.saveMmseScore(userId, "mmse_recall", recall);
+        surveyService.saveMmseScore(userId, "mmse_language", language);
+        surveyService.saveMmseScore(userId, "mmse_copy", copy);
 
         // ③ MMSE 설문 완료 처리
         surveyService.completeSurvey(userId, "mmse");
