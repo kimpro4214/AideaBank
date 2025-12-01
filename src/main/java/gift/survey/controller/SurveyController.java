@@ -20,13 +20,13 @@ public class SurveyController {
 
     private final SurveyService surveyService;
 
-    /** 기존 기능: 설문 응답 저장 */
+    /** 기존 기능: 설문 응답 저장 (POST 유지 — 본문 필요) */
     @PostMapping("/responses")
     public SurveyResponseResult submitSurvey(@RequestBody SurveyResponse request) {
         return surveyService.saveSurveyResponse(request);
     }
 
-    /** 신규 기능: 최초 방문 → user_id 쿠키 발급 & CSV row 생성 */
+    /** 최초 방문 → user_id 쿠키 발급 & CSV row 생성 */
     @GetMapping("/init")
     public ResponseEntity<?> initUser(HttpServletResponse response) {
 
@@ -45,24 +45,28 @@ public class SurveyController {
         return ResponseEntity.ok("user initialized");
     }
 
-    /** 설문 시작 */
-    @PostMapping("/start")
+    /** 설문 시작 (GET 버전) */
+    @GetMapping("/start")
     public ResponseEntity<?> startSurvey(
             @CookieValue("user_id") String userId,
             @RequestParam("type") String type
     ) {
         surveyService.updateSurveyStatus(userId, type, false);
-        return ResponseEntity.ok("started");
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-store")
+                .body("started");
     }
 
-    /** 설문 완료 */
-    @PostMapping("/complete")
+    /** 설문 완료 (GET 버전) */
+    @GetMapping("/complete")
     public ResponseEntity<?> completeSurvey(
             @CookieValue("user_id") String userId,
             @RequestParam("type") String type
     ) {
         surveyService.updateSurveyStatus(userId, type, true);
-        return ResponseEntity.ok("completed");
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-store")
+                .body("completed");
     }
 
     /** 설문 상태 조회 */
