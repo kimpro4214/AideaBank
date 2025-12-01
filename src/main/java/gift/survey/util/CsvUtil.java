@@ -7,7 +7,7 @@ import java.util.*;
 
 public class CsvUtil {
 
-    private static final String FILE_PATH = "src/main/resources/data/survey_status.csv";
+    private static final String FILE_PATH = "/home/ubuntu/survey_status.csv";
 
     /**
      * 신규 유저 Row 생성
