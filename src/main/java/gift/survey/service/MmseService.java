@@ -2,6 +2,7 @@ package gift.survey.service;
 
 import gift.survey.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gift.survey.util.CsvUtilMmse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -193,5 +194,9 @@ public class MmseService {
                 stageScores,
                 attachments
         );
+    }
+
+    public void saveRawMmse(String userId, MmseRawScoreRequest req) {
+        CsvUtilMmse.saveRawMmse(userId, req);
     }
 }

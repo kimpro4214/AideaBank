@@ -55,24 +55,23 @@ public class MmseController {
     /**
      * 🆕 MMSE 점수 저장 (CSV)
      */
+    /**
+     * 🆕 MMSE 문항별 점수 저장 (CSV)
+     * 프론트에서 mmse-1 ~ mmse-12 점수 + totalScore 를 보내면
+     * 날짜별 CSV 파일에 저장
+     */
     @PostMapping("/score")
-    public ResponseEntity<?> saveMmseScore(
-            @CookieValue("user_id") String anonymousUserId,  // CSV용 userId
-            @RequestParam("part") String part,               // 예: mmse_time
-            @RequestBody Map<String, Integer> body
+    public ResponseEntity<?> saveMmseRawScore(
+            @CookieValue("user_id") String userId,               // UUID 기반 익명 사용자 ID
+            @RequestBody MmseRawScoreRequest request            // 문항별 점수 + totalScore
     ) {
-        int score = body.get("score");
-
-        // CSV에 점수 저장
-        surveyService.saveMmseScore(anonymousUserId, part, score);
-
-        // MMSE 전체 완료 처리
-        surveyService.completeSurvey(anonymousUserId, "mmse");
+        mmseService.saveRawMmse(userId, request);
 
         return ResponseEntity.ok(Map.of(
-                "message", "MMSE score saved",
-                "part", part,
-                "score", score
+                "status", "OK",
+                "message", "MMSE raw score stored",
+                "userId", userId
         ));
     }
+
 }
