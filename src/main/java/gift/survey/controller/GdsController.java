@@ -1,27 +1,42 @@
 package gift.survey.controller;
 
 import gift.survey.dto.GdsResponse;
-import org.springframework.http.*;
+import gift.survey.service.SurveyService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/gds")
+@RequiredArgsConstructor
 public class GdsController {
 
+    private final SurveyService surveyService;
+
     /**
-     * 1) GDS 점수 계산 API
+     * 1) GDS 점수 계산 + CSV에 저장 + 상태 완료 처리
      */
     @PostMapping("/score")
-    public ResponseEntity<GdsResponse> calculate(@RequestBody Map<String, Integer> answers) {
+    public ResponseEntity<GdsResponse> calculate(
+            @CookieValue("user_id") String userId,
+            @RequestBody Map<String, Integer> answers
+    ) {
 
+        // 점수 계산
         int score = answers.values().stream()
                 .mapToInt(Integer::intValue)
                 .sum();
 
+        // CSV에 점수 저장
+        surveyService.saveGdsScore(userId, score);
+
+        // GDS 완료 상태 true 로 저장
+        surveyService.updateSurveyStatus(userId, "gds", true);
+
+        // level 계산
         String level;
         if (score < 10) level = "가벼운 우울";
         else if (score < 17) level = "중등도 우울";
@@ -35,16 +50,23 @@ public class GdsController {
 
 
     /**
-     * 2) GDS 점수 계산 후 AI 서버로 전송하는 API
+     * 2) GDS 점수를 AI 서버로 전송하는 API (현재는 stub)
      */
     @PostMapping("/predict")
-    public ResponseEntity<?> predictToAi(@RequestBody Map<String, Integer> answers) {
+    public ResponseEntity<?> predictToAi(
+            @CookieValue("user_id") String userId,
+            @RequestBody Map<String, Integer> answers
+    ) {
 
         int score = answers.values().stream()
                 .mapToInt(Integer::intValue)
                 .sum();
 
-        // 실제 AI 서버가 없으므로 현재는 mock 응답 리턴
+        // CSV 저장 (점수 저장 + 완료 표시)
+        surveyService.saveGdsScore(userId, score);
+        surveyService.updateSurveyStatus(userId, "gds", true);
+
+        // stub 응답
         Map<String, Object> mock = new HashMap<>();
         mock.put("gds_score", score);
         mock.put("ai_result", "AI 서버 없음 - Stub 응답");
@@ -52,37 +74,4 @@ public class GdsController {
 
         return ResponseEntity.ok(mock);
     }
-
-//    @PostMapping("/predict")
-//    public ResponseEntity<?> predictToAi(@RequestBody Map<String, Integer> answers) {
-//
-//        // 1. 점수 계산
-//        int score = answers.values().stream()
-//                .mapToInt(Integer::intValue)
-//                .sum();
-//
-//        // 2. AI 서버로 전달할 Body 생성
-//        Map<String, Object> aiRequestBody = new HashMap<>();
-//        aiRequestBody.put("gds_score", score);
-//
-//        // 3. AI 서버 URL
-//        String aiUrl = "http://your-ai-server/predict"; // ← 실제 AI 서버 주소로 교체
-//
-//        // 4. RestTemplate 준비
-//        RestTemplate restTemplate = new RestTemplate();
-//
-//        // 5. 요청 헤더 설정 (JSON)
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON);
-//
-//        HttpEntity<Map<String, Object>> requestEntity =
-//                new HttpEntity<>(aiRequestBody, headers);
-//
-//        // 6. AI 서버 호출
-//        ResponseEntity<String> aiResponse =
-//                restTemplate.exchange(aiUrl, HttpMethod.POST, requestEntity, String.class);
-//
-//        // 7. AI 서버 응답 그대로 반환
-//        return ResponseEntity.ok(aiResponse.getBody());
-//    }
 }
