@@ -160,27 +160,36 @@ public class AiController {
         try {
             RestTemplate rest = new RestTemplate();
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key="
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key="
                     + geminiApiKey;
 
             Map<String, Object> requestBody = Map.of(
-                    "prompt", Map.of("text", prompt),
-                    "max_output_tokens", 500
+                    "contents", new Object[]{
+                            Map.of("parts", new Object[]{
+                                    Map.of("text", prompt)
+                            })
+                    }
             );
 
             ResponseEntity<Map> response =
                     rest.postForEntity(url, requestBody, Map.class);
 
-            Map result = response.getBody();
-            if (result == null) return "Gemini 응답 없음";
+            Map<String, Object> body = response.getBody();
+            if (body == null) return "Gemini 응답 없음";
 
-            var candidates = (java.util.List<Map>) result.get("candidates");
-            var output = (Map<String, Object>) candidates.get(0).get("output");
+            // candidates -> content -> parts -> text
+            var candidates = (java.util.List<Map>) body.get("candidates");
+            if (candidates == null || candidates.isEmpty()) return "Gemini 후보 없음";
 
-            return (String) output.get("text");
+            var content = (Map<String, Object>) candidates.get(0).get("content");
+            var parts = (java.util.List<Map>) content.get("parts");
+            var text = (String) parts.get(0).get("text");
+
+            return text;
 
         } catch (Exception e) {
             return "Gemini 호출 오류: " + e.getMessage();
         }
     }
+
 }
