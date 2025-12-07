@@ -69,7 +69,7 @@ public class SurveyController {
         }
     }
 
-    /** 상태 조회 (MMSE + GDS + BASIC 설문 값 전부 포함) */
+    /** 상태 조회 (MMSE + GDS + BASIC) */
     @GetMapping("/status")
     public ResponseEntity<?> getStatus(
             @CookieValue("user_id") String userId
@@ -101,27 +101,4 @@ public class SurveyController {
     ) {
         return ResponseEntity.ok(surveyService.getBasicSurvey(userId));
     }
-
-    @PostMapping("/basic")
-    public ResponseEntity<?> saveBasicSurvey(
-            @CookieValue("user_id") String userId,
-            @RequestBody Map<String, Integer> body
-    ) {
-        surveyService.saveBasicSurvey(
-                userId,
-                body.get("age_cognition"),
-                body.get("sex"),
-                body.get("race"),
-                body.get("education")
-        );
-        return ResponseEntity.ok(Map.of("status", "saved"));
-    }
-
-    @GetMapping("/basic")
-    public ResponseEntity<?> getBasicSurvey(
-            @CookieValue("user_id") String userId
-    ) {
-        return ResponseEntity.ok(surveyService.getBasicSurvey(userId));
-    }
-
 }

@@ -175,13 +175,12 @@ public class CsvUtil {
 
         List<String[]> rows = new ArrayList<>();
 
-        try (BufferedReader br = new FileReader(FILE_PATH)) {
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
 
             String line;
-            BufferedReader br2 = new BufferedReader(br);
 
-            while ((line = br2.readLine()) != null) {
-                rows.add(line.split(","));
+            while ((line = br.readLine()) != null) {
+                rows.add(line.split(",")); // CSV = comma 구분
             }
 
         } catch (Exception e) {
@@ -190,6 +189,7 @@ public class CsvUtil {
 
         return rows;
     }
+
 
 
     /** CSV 전체 쓰기 */
