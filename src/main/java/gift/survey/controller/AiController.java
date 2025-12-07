@@ -70,11 +70,26 @@ public class AiController {
             file.getParentFile().mkdirs();
 
             FileWriter writer = new FileWriter(file);
-            writer.write("question,score\n");
 
-            for (int i = 1; i <= 12; i++) {
-                writer.write("mmse-" + i + "," + mmseScores.get("mmse-" + i) + "\n");
-            }
+            // 1행: mmse-1, mmse-2, ..., mmse-12
+            writer.write("mmse-1,mmse-2,mmse-3,mmse-4,mmse-5,mmse-6,mmse-7,mmse-8,mmse-9,mmse-10,mmse-11,mmse-12\n");
+
+            // 2행: 점수들
+            writer.write(
+                    mmseScores.get("mmse-1") + "," +
+                            mmseScores.get("mmse-2") + "," +
+                            mmseScores.get("mmse-3") + "," +
+                            mmseScores.get("mmse-4") + "," +
+                            mmseScores.get("mmse-5") + "," +
+                            mmseScores.get("mmse-6") + "," +
+                            mmseScores.get("mmse-7") + "," +
+                            mmseScores.get("mmse-8") + "," +
+                            mmseScores.get("mmse-9") + "," +
+                            mmseScores.get("mmse-10") + "," +
+                            mmseScores.get("mmse-11") + "," +
+                            mmseScores.get("mmse-12")
+                            + "\n"
+            );
 
             writer.close();
             return file;
@@ -83,6 +98,7 @@ public class AiController {
             throw new RuntimeException("MMSE CSV 생성 실패", e);
         }
     }
+
 
     /** BASIC CSV 생성 */
     private File createBasicCsv(String userId, Map<String, Object> basic) {
