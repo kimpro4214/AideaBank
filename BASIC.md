@@ -1,0 +1,27 @@
+📌 POST /api/surveys/basic — 기본 설문 저장
+
+✔ Request
+
+```
+{
+  "age_cognition": 3,
+  "sex": 1,
+  "race": 2,
+  "education": 4
+}
+```
+
+필드 설명
+
+| 필드              | 타입     | 설명       |
+| --------------- | ------ | -------- |
+| `age_cognition` | number | 인지 연령 구분 |
+| `sex`           | number | 성별 코드    |
+| `race`          | number | 인종 코드    |
+| `education`     | number | 교육 수준 코드 |
+
+✔ Response (200 OK)
+
+```
+{ "status": "saved" }
+```
