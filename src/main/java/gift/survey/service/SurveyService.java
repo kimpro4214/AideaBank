@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -64,17 +65,29 @@ public class SurveyService {
     public Map<String, Object> getSurveyStatus(String userId) {
         String[] s = CsvUtil.getStatusRow(userId);
 
-        return Map.of(
-                "basic_status", s[1],
-                "mmse_status", s[2],
-                "gds_status", s[3],
-                "gds_score", Integer.parseInt(s[4]),
-                "mmse_time_score", Integer.parseInt(s[5]),
-                "mmse_registration_score", Integer.parseInt(s[6]),
-                "mmse_recall_score", Integer.parseInt(s[7]),
-                "mmse_attention_score", Integer.parseInt(s[8]),
-                "mmse_language_score", Integer.parseInt(s[9]),
-                "mmse_copy_score", Integer.parseInt(s[10])
-        );
+        Map<String, Integer> mmseScores = new HashMap<>();
+        mmseScores.put("mmse-1", Integer.parseInt(s[5]));
+        mmseScores.put("mmse-2", Integer.parseInt(s[6]));
+        mmseScores.put("mmse-3", Integer.parseInt(s[7]));
+        mmseScores.put("mmse-4", Integer.parseInt(s[8]));
+        mmseScores.put("mmse-5", Integer.parseInt(s[9]));
+        mmseScores.put("mmse-6", Integer.parseInt(s[10]));
+        mmseScores.put("mmse-7", Integer.parseInt(s[11]));
+        mmseScores.put("mmse-8", Integer.parseInt(s[12]));
+        mmseScores.put("mmse-9", Integer.parseInt(s[13]));
+        mmseScores.put("mmse-10", Integer.parseInt(s[14]));
+        mmseScores.put("mmse-11", Integer.parseInt(s[15]));
+        mmseScores.put("mmse-12", Integer.parseInt(s[16]));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("basic_status", s[1]);
+        result.put("mmse_status", s[2]);
+        result.put("gds_status", s[3]);
+        result.put("gds_score", Integer.parseInt(s[4]));
+        result.put("mmse_scores", mmseScores);
+        result.put("mmse_total", Integer.parseInt(s[17]));
+
+        return result;
     }
+
 }

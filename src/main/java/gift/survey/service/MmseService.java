@@ -3,6 +3,7 @@ package gift.survey.service;
 import gift.survey.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gift.survey.util.CsvUtilMmse;
+import gift.survey.util.CsvUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +24,6 @@ public class MmseService {
 
     private final SurveyService surveyService;
 
-
     @Value("${mmse.upload-dir:${user.dir}/uploads/mmse}")
     private String uploadDir;
 
@@ -42,52 +42,12 @@ public class MmseService {
                 new MmseQuestionDto(9L, "시공간 구성", "오각형 두 개를 겹쳐 그려보세요.", ttsBaseUrl + "/q9.mp3", "IMAGE"),
                 new MmseQuestionDto(10L, "언어 기능", "‘간장 공장 공장장’을 따라 말하세요.", ttsBaseUrl + "/q10.mp3", "AUDIO"),
                 new MmseQuestionDto(11L, "이해", "옷은 왜 빨아서 입습니까?", ttsBaseUrl + "/q11.mp3", "TEXT"),
-                new MmseQuestionDto(12L, "판단", "길에서 남의 주민등록증을 주웠을 때 어떻게 하면 쉽게 주인에게 돌려줄 수 있겠습니까?", ttsBaseUrl + "/q12.mp3", "TEXT")
+                new MmseQuestionDto(12L, "판단", "길에서 남의 주민등록증을 주웠을 때 어떻게 하면 쉽게 주인에게 되돌려줄 수 있겠습니까?", ttsBaseUrl + "/q12.mp3", "TEXT")
         );
 
         return new MmseQuestionResponse("MMSE-K", list.size(), list);
     }
 
-    // ⚙️ 자동 채점 (스테이지별 반환)
-    private Map.Entry<String, Integer> autoScoreWithStage(String questionText, String answer) {
-        if (answer == null || answer.isBlank()) return Map.entry("unknown", 0);
-        questionText = questionText.trim();
-        answer = answer.trim();
-
-        // 지남력 (orientation)
-        if (questionText.contains("몇 년") || questionText.contains("요일")) {
-            int score = 0;
-            if (answer.matches(".*\\d{4}.*")) score++;
-            if (answer.contains("월")) score++;
-            if (answer.contains("일")) score++;
-            if (answer.contains("요일")) score++;
-            return Map.entry("orientation", Math.min(score, 5));
-        }
-
-        // 기억 등록/회상 (memory)
-        if (questionText.contains("물건 이름")) {
-            String[] correct = {"나무", "자동차", "모자"};
-            int cnt = 0;
-            for (String c : correct) if (answer.contains(c)) cnt++;
-            return Map.entry("memory", cnt);
-        }
-
-        // 주의 집중/계산 (attention)
-        if (questionText.contains("100") || questionText.contains("삼천리강산")) {
-            if (answer.matches(".*93.*86.*79.*72.*65.*")) return Map.entry("attention", 5);
-            if (answer.contains("산강천리삼")) return Map.entry("attention", 3);
-            return Map.entry("attention", 0);
-        }
-
-        // 언어 기능 (language)
-        if (questionText.contains("간장 공장 공장장")) return Map.entry("language", 1);
-
-        // 이해/판단 (judgment)
-        if (answer.contains("깨끗")) return Map.entry("judgment", 1);
-        if (answer.contains("우체국")) return Map.entry("judgment", 1);
-
-        return Map.entry("unknown", 0);
-    }
 
     // 🗂️ 응답 저장 + 자동 채점 + 스테이지별 점수 + 파일 업로드
     public MmseSubmitResponse saveResponse(Long userId, String answersJson, List<MultipartFile> files) {
@@ -109,7 +69,7 @@ public class MmseService {
         ));
 
         try {
-            // 1️⃣ 파일 업로드 처리
+            // 파일 업로드
             if (files != null) {
                 for (MultipartFile file : files) {
                     if (file.isEmpty() || file.getOriginalFilename() == null) continue;
@@ -124,11 +84,13 @@ public class MmseService {
                 }
             }
 
-            // 2️⃣ 자동 채점
+            // 자동 채점
             List<Map<String, Object>> answers = objectMapper.readValue(answersJson, List.class);
+
             for (Map<String, Object> a : answers) {
                 String qText = (String) a.getOrDefault("questionText", "");
                 String ans = (String) a.getOrDefault("answer", "");
+
                 Map.Entry<String, Integer> scored = autoScoreWithStage(qText, ans);
                 String stage = scored.getKey();
                 int score = scored.getValue();
@@ -139,7 +101,7 @@ public class MmseService {
                 totalScore += score;
             }
 
-            // 3️⃣ 결과 저장
+            // result.json 저장
             Path scorePath = Path.of(userPath, "result.json");
             Map<String, Object> resultJson = Map.of(
                     "userId", userId,
@@ -150,7 +112,7 @@ public class MmseService {
             Files.writeString(scorePath, objectMapper.writeValueAsString(resultJson));
 
         } catch (IOException e) {
-            log.error("파일 저장 또는 자동 채점 실패: {}", e.getMessage());
+            log.error("자동 채점 실패: {}", e.getMessage());
         }
 
         Map<String, List<String>> uploaded = Map.of(
@@ -168,7 +130,8 @@ public class MmseService {
         );
     }
 
-    // 📊 결과 조회 (총점 + 스테이지별 점수 반환)
+
+    // 📊 결과 조회 (파일 저장된 totalScore / stageScore 로 조회)
     public MmseResultResponse getResult(Long userId) {
         String baseUrl = "https://cdn.example.com/uploads/" + userId + "/";
         List<String> attachments = new ArrayList<>();
@@ -201,45 +164,51 @@ public class MmseService {
         );
     }
 
+
+    // 🆕 CSV 저장 (문항별)
     public void saveRawMmse(String userId, MmseRawScoreRequest req) {
-        CsvUtilMmse.saveRawMmse(userId, req);
+        CsvUtil.updateRawMmse(userId, req.getScores(), req.getTotalScore());
     }
 
+    // 🆕 mmse 상태만 완료 처리
     public void updateMmseStatusScores(String userId, MmseRawScoreRequest req) {
-
-        Map<String, Integer> s = req.getScores();
-
-        // ① 문항 → 영역 매핑
-        int time = s.getOrDefault("mmse-1", 0);
-
-        int registration =
-                s.getOrDefault("mmse-4", 0) +
-                        s.getOrDefault("mmse-5", 0);
-
-        int attention =
-                s.getOrDefault("mmse-6", 0);
-
-        int recall =
-                s.getOrDefault("mmse-7", 0) +
-                        s.getOrDefault("mmse-9", 0);
-
-        int language =
-                s.getOrDefault("mmse-10", 0) +
-                        s.getOrDefault("mmse-11", 0);
-
-        int copy =
-                s.getOrDefault("mmse-12", 0);
-
-        // ② survey_status.csv 에 영역별 점수 저장
-        surveyService.saveMmseScore(userId, "mmse_time", time);
-        surveyService.saveMmseScore(userId, "mmse_registration", registration);
-        surveyService.saveMmseScore(userId, "mmse_attention", attention);
-        surveyService.saveMmseScore(userId, "mmse_recall", recall);
-        surveyService.saveMmseScore(userId, "mmse_language", language);
-        surveyService.saveMmseScore(userId, "mmse_copy", copy);
-
-        // ③ MMSE 설문 완료 처리
         surveyService.completeSurvey(userId, "mmse");
+    }
+
+    // 자동 채점 메서드
+    private Map.Entry<String, Integer> autoScoreWithStage(String questionText, String answer) {
+        if (answer == null || answer.isBlank()) return Map.entry("unknown", 0);
+        questionText = questionText.trim();
+        answer = answer.trim();
+
+        if (questionText.contains("몇 년") || questionText.contains("요일")) {
+            int score = 0;
+            if (answer.matches(".*\\d{4}.*")) score++;
+            if (answer.contains("월")) score++;
+            if (answer.contains("일")) score++;
+            if (answer.contains("요일")) score++;
+            return Map.entry("orientation", Math.min(score, 5));
+        }
+
+        if (questionText.contains("물건 이름")) {
+            String[] correct = {"나무", "자동차", "모자"};
+            int cnt = 0;
+            for (String c : correct) if (answer.contains(c)) cnt++;
+            return Map.entry("memory", cnt);
+        }
+
+        if (questionText.contains("100") || questionText.contains("삼천리강산")) {
+            if (answer.matches(".*93.*86.*79.*72.*65.*")) return Map.entry("attention", 5);
+            if (answer.contains("산강천리삼")) return Map.entry("attention", 3);
+            return Map.entry("attention", 0);
+        }
+
+        if (questionText.contains("간장 공장 공장장")) return Map.entry("language", 1);
+
+        if (answer.contains("깨끗")) return Map.entry("judgment", 1);
+        if (answer.contains("우체국")) return Map.entry("judgment", 1);
+
+        return Map.entry("unknown", 0);
     }
 
 }
