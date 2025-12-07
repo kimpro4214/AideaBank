@@ -10,10 +10,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -29,7 +25,13 @@ public class AiController {
     @Value("${ai.server.url:https://forgeable-cryoscopic-theresia.ngrok-free.dev/diagnose}")
     private String aiServerUrl;
 
-    /** CSV 생성 + AI 서버 전송 */
+    /**
+     * 📌 전체 통합 진단 API
+     * 1) CSV 생성
+     * 2) AI 서버로 CSV 업로드
+     * 3) AI 서버에서 RAG + LLM + Final Report 모두 수행
+     * 4) 최종 JSON 그대로 프론트로 반환
+     */
     @PostMapping("/diagnose")
     public ResponseEntity<?> diagnose(@CookieValue("user_id") String userId) {
 
@@ -39,13 +41,18 @@ public class AiController {
         Map<String, Integer> mmse = (Map<String, Integer>) status.get("mmse_scores");
         Map<String, Object> basic = (Map<String, Object>) status.get("basic_survey");
 
+        if (mmse == null || basic == null) {
+            return ResponseEntity.badRequest().body("설문 데이터가 부족합니다.");
+        }
+
         // 2) CSV 파일 생성
         File mmseCsv = createMmseCsv(userId, mmse);
         File basicCsv = createBasicCsv(userId, basic);
 
-        // 3) AI 서버에 전송
+        // 3) AI 서버 호출 (RAG + LLM 통합 모델)
         Map<String, Object> aiResult = sendToAiServer(mmseCsv, basicCsv);
 
+        // 4) 최종 결과 그대로 반환
         return ResponseEntity.ok(aiResult);
     }
 
@@ -94,7 +101,15 @@ public class AiController {
         }
     }
 
-    /** AI 서버로 전송 */
+    /**
+     * 📌 AI 통합 서버로 CSV 업로드
+     * Response 예시:
+     * {
+     *   "diagnosis": "CN",
+     *   "probability": { "CN": 0.72, "MCI": 0.28, "AD": 0.0 },
+     *   "report": "이 환자는..."
+     * }
+     */
     private Map<String, Object> sendToAiServer(File mmseCsv, File basicCsv) {
 
         RestTemplate rest = new RestTemplate();
@@ -106,7 +121,8 @@ public class AiController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+        HttpEntity<MultiValueMap<String, Object>> request =
+                new HttpEntity<>(body, headers);
 
         ResponseEntity<Map> response =
                 rest.exchange(aiServerUrl, HttpMethod.POST, request, Map.class);
