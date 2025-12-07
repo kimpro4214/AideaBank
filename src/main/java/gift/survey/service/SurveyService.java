@@ -18,7 +18,7 @@ public class SurveyService {
 
     private final SurveyResponseRepository surveyResponseRepository;
 
-    /** 기존: DB 응답 저장 */
+    /** DB 저장 */
     public SurveyResponseResult saveSurveyResponse(SurveyResponse request) {
         request.setSubmittedAt(LocalDateTime.now());
         surveyResponseRepository.save(request);
@@ -31,17 +31,17 @@ public class SurveyService {
                 .build();
     }
 
-    /** 신규: 최초 방문 시 CSV 기본값 생성 */
+    /** 최초 방문 시 CSV row 생성 */
     public void createUserRow(String userId) {
-        CsvUtil.addUser(userId);  // 내부에서 non-start로 기본값 생성
+        CsvUtil.addUser(userId);
     }
 
-    /** 설문 시작 → 상태 = in-progress */
+    /** 설문 시작 */
     public void startSurvey(String userId, String type) {
         CsvUtil.updateStatus(userId, type, "in-progress");
     }
 
-    /** 설문 완료 → 상태 = completed */
+    /** 설문 완료 */
     public void completeSurvey(String userId, String type) {
         String current = CsvUtil.getStatus(userId, type);
 
@@ -52,42 +52,59 @@ public class SurveyService {
         CsvUtil.updateStatus(userId, type, "completed");
     }
 
-    /** 점수 저장 */
+    /** GDS 점수 저장 */
     public void saveGdsScore(String userId, int score) {
         CsvUtil.updateScore(userId, "gds_score", score);
     }
 
-    public void saveMmseScore(String userId, String part, int score) {
-        CsvUtil.updateScore(userId, part + "_score", score);
+    /** BASIC 설문 저장 */
+    public void saveBasicSurvey(
+            String userId,
+            int ageCognition,
+            int sex,
+            int race,
+            int education
+    ) {
+        CsvUtil.updateBasicSurvey(userId, ageCognition, sex, race, education);
     }
 
-    /** 상태 조회 */
+    /** BASIC 설문 조회 */
+    public Map<String, Object> getBasicSurvey(String userId) {
+        String[] row = CsvUtil.getStatusRow(userId);
+
+        return Map.of(
+                "age_cognition", Integer.parseInt(row[18]),
+                "sex", Integer.parseInt(row[19]),
+                "race", Integer.parseInt(row[20]),
+                "education", Integer.parseInt(row[21])
+        );
+    }
+
+    /** 전체 설문 상태 조회 */
     public Map<String, Object> getSurveyStatus(String userId) {
         String[] s = CsvUtil.getStatusRow(userId);
 
         Map<String, Integer> mmseScores = new HashMap<>();
-        mmseScores.put("mmse-1", Integer.parseInt(s[5]));
-        mmseScores.put("mmse-2", Integer.parseInt(s[6]));
-        mmseScores.put("mmse-3", Integer.parseInt(s[7]));
-        mmseScores.put("mmse-4", Integer.parseInt(s[8]));
-        mmseScores.put("mmse-5", Integer.parseInt(s[9]));
-        mmseScores.put("mmse-6", Integer.parseInt(s[10]));
-        mmseScores.put("mmse-7", Integer.parseInt(s[11]));
-        mmseScores.put("mmse-8", Integer.parseInt(s[12]));
-        mmseScores.put("mmse-9", Integer.parseInt(s[13]));
-        mmseScores.put("mmse-10", Integer.parseInt(s[14]));
-        mmseScores.put("mmse-11", Integer.parseInt(s[15]));
-        mmseScores.put("mmse-12", Integer.parseInt(s[16]));
+        for (int i = 1; i <= 12; i++) {
+            mmseScores.put("mmse-" + i, Integer.parseInt(s[4 + i]));
+        }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("basic_status", s[1]);
-        result.put("mmse_status", s[2]);
-        result.put("gds_status", s[3]);
-        result.put("gds_score", Integer.parseInt(s[4]));
-        result.put("mmse_scores", mmseScores);
-        result.put("mmse_total", Integer.parseInt(s[17]));
+        Map<String, Object> basicInfo = Map.of(
+                "age_cognition", Integer.parseInt(s[18]),
+                "sex", Integer.parseInt(s[19]),
+                "race", Integer.parseInt(s[20]),
+                "education", Integer.parseInt(s[21])
+        );
 
-        return result;
+        return Map.of(
+                "basic_status", s[1],
+                "mmse_status", s[2],
+                "gds_status", s[3],
+
+                "gds_score", Integer.parseInt(s[4]),
+                "mmse_scores", mmseScores,
+                "mmse_total", Integer.parseInt(s[17]),
+                "basic_survey", basicInfo
+        );
     }
-
 }

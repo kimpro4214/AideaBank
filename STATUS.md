@@ -6,9 +6,10 @@ GET api/surveys/status
 
 Headers
 
-| Key       | Value  | 설명                     |
-| --------- | ------ | ---------------------- |
-| `user-id` | string | 유저 식별용 ID (쿠키로 관리해도 됨) |
+| Key                   | Value  | 설명         |
+| --------------------- | ------ | ---------- |
+| `user-id` (또는 Cookie) | string | 익명 사용자 식별자 |
+
 
 🟥 Response (200 OK)
 
@@ -20,28 +21,48 @@ Headers
   "mmse_status": "completed",
   "gds_status": "completed",
   "gds_score": 30,
-  "mmse_time_score": 5,
-  "mmse_registration_score": 3,
-  "mmse_recall_score": 2,
-  "mmse_attention_score": 4,
-  "mmse_language_score": 8,
-  "mmse_copy_score": 1
+  "mmse_scores": {
+    "mmse-1": 4,
+    "mmse-2": 0,
+    "mmse-3": 0,
+    "mmse-4": 3,
+    "mmse-5": 2,
+    "mmse-6": 3,
+    "mmse-7": 2,
+    "mmse-8": 0,
+    "mmse-9": 1,
+    "mmse-10": 1,
+    "mmse-11": 1,
+    "mmse-12": 1
+  },
+  "mmse_total": 18
 }
 ```
 
 🟩 Response 필드 설명
 
-| 필드명                       | 타입     | 설명                                               |
-| ------------------------- | ------ | ------------------------------------------------ |
-| `basic_status`            | string | 기본 설문 상태 (`non-start` / `started` / `completed`) |
-| `mmse_status`             | string | MMSE 설문 상태                                       |
-| `gds_status`              | string | GDS 설문 상태                                        |
-| `gds_score`               | number | GDS 총점                                           |
-| `mmse_time_score`         | number | MMSE 시간 지남력 점수                                   |
-| `mmse_registration_score` | number | MMSE 기억 등록(단어 기억) 점수                             |
-| `mmse_recall_score`       | number | MMSE 기억 회상(단어 회상) 점수                             |
-| `mmse_attention_score`    | number | MMSE 주의집중/계산 점수                                  |
-| `mmse_language_score`     | number | MMSE 언어 기능 점수                                    |
-| `mmse_copy_score`         | number | MMSE 도형 모사 점수                                    |
+| 필드명            | 타입     | 설명                                                 |
+| -------------- | ------ | -------------------------------------------------- |
+| `basic_status` | string | 기본 설문 상태 (`non-start`, `in-progress`, `completed`) |
+| `mmse_status`  | string | MMSE 설문 상태                                         |
+| `gds_status`   | string | GDS 설문 상태                                          |
+| `gds_score`    | number | GDS 총점                                             |
 
+✔ mmse_scores (객체)
 
+프론트에서 제출한 문항별 점수를 그대로 반환함
+
+| 필드명       | 설명        |
+| --------- | --------- |
+| `mmse-1`  | 시간 지남력    |
+| `mmse-2`  | 장소 지남력 ①  |
+| `mmse-3`  | 장소 지남력 ②  |
+| `mmse-4`  | 기억 등록     |
+| `mmse-5`  | 기억 회상     |
+| `mmse-6`  | 주의집중/계산   |
+| `mmse-7`  | 사물 이름대기   |
+| `mmse-8`  | 3단계 명령 수행 |
+| `mmse-9`  | 도형 모사     |
+| `mmse-10` | 문장 따라 말하기 |
+| `mmse-11` | 이해        |
+| `mmse-12` | 판단        |
