@@ -22,7 +22,7 @@ public class AiController {
 
     private final SurveyService surveyService;
 
-    @Value("${ai.server.url:https://forgeable-cryoscopic-theresia.ngrok-free.dev/diagnose}")
+    @Value("${ai.server.url:https://forgeable-cryoscopic-theresia.ngrok-free.dev/diagnose-from-files}")
     private String aiServerUrl;
 
     /**
