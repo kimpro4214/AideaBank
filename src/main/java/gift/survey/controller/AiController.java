@@ -138,8 +138,8 @@ public class AiController {
         RestTemplate rest = new RestTemplate();
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("mmse", new FileSystemResource(mmseCsv));
-        body.add("basic", new FileSystemResource(basicCsv));
+        body.add("mmse_file", new FileSystemResource(mmseCsv));
+        body.add("basic_file", new FileSystemResource(basicCsv));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
