@@ -1,5 +1,8 @@
 package gift.survey.controller;
 
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
 import gift.survey.service.SurveyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,16 +24,17 @@ import java.util.Map;
 public class AiController {
 
     private final SurveyService surveyService;
+    private final Client genAIClient;           // Gemini SDK Client
+    private final String geminiModel = "gemini-2.5-flash";
 
     @Value("${ai.server.url:https://victor-consolatory-reasonlessly.ngrok-free.dev/diagnose-from-files}")
     private String aiServerUrl;
 
+    @Value("${GEMINI_API_KEY}")
+    private String geminiApiKey; // 지금 구조에선 안 써도 되지만 남겨둠
+
     /**
      * 📌 전체 통합 진단 API
-     * 1) CSV 생성
-     * 2) AI 서버로 CSV 업로드
-     * 3) AI 서버에서 RAG + LLM + Final Report 모두 수행
-     * 4) 최종 JSON 그대로 프론트로 반환
      */
     @PostMapping("/diagnose")
     public ResponseEntity<?> diagnose(@CookieValue("user_id") String userId) {
@@ -49,21 +53,19 @@ public class AiController {
 
         Map<String, Object> aiResult = sendToAiServer(mmseCsv, basicCsv);
 
-        // 🔥 AI 서버가 준 프롬프트 꺼내기
-        String prompt = (String) aiResult.get("prompt");
+        // 🔥 AI 서버에서 생성한 프롬프트 추출 (키 이름: llm_prompt)
+        String prompt = (String) aiResult.get("llm_prompt");
 
-        // 🔥 프롬프트를 Gemini에 전달해 소견서 생성
+        // 🔥 Gemini 호출하여 소견서 생성
         String llmReport = callGemini(prompt);
 
-        // 🔥 전체 결과를 조합해 프론트로 전달
         return ResponseEntity.ok(Map.of(
-                "model_result", aiResult,   // 통합 모델 결과 + RAG 결과
-                "llm_report", llmReport     // 최종 의학적 소견 (Gemini)
+                "model_result", aiResult,
+                "llm_report", llmReport
         ));
     }
 
-
-    /** MMSE CSV 생성 */
+    /** ---------------- CSV 생성 (MMSE) ---------------- **/
     private File createMmseCsv(String userId, Map<String, Integer> mmseScores) {
         try {
             File file = new File("/home/ubuntu/tmp/mmse_" + userId + ".csv");
@@ -71,10 +73,8 @@ public class AiController {
 
             FileWriter writer = new FileWriter(file);
 
-            // 1행: mmse-1, mmse-2, ..., mmse-12
             writer.write("mmse-1,mmse-2,mmse-3,mmse-4,mmse-5,mmse-6,mmse-7,mmse-8,mmse-9,mmse-10,mmse-11,mmse-12\n");
 
-            // 2행: 점수들
             writer.write(
                     mmseScores.get("mmse-1") + "," +
                             mmseScores.get("mmse-2") + "," +
@@ -87,20 +87,17 @@ public class AiController {
                             mmseScores.get("mmse-9") + "," +
                             mmseScores.get("mmse-10") + "," +
                             mmseScores.get("mmse-11") + "," +
-                            mmseScores.get("mmse-12")
-                            + "\n"
+                            mmseScores.get("mmse-12") + "\n"
             );
 
             writer.close();
             return file;
-
         } catch (Exception e) {
             throw new RuntimeException("MMSE CSV 생성 실패", e);
         }
     }
 
-
-    /** BASIC CSV 생성 */
+    /** ---------------- CSV 생성 (BASIC) ---------------- **/
     private File createBasicCsv(String userId, Map<String, Object> basic) {
         try {
             File file = new File("/home/ubuntu/tmp/basic_" + userId + ".csv");
@@ -118,21 +115,12 @@ public class AiController {
 
             writer.close();
             return file;
-
         } catch (Exception e) {
             throw new RuntimeException("BASIC CSV 생성 실패", e);
         }
     }
 
-    /**
-     * 📌 AI 통합 서버로 CSV 업로드
-     * Response 예시:
-     * {
-     *   "diagnosis": "CN",
-     *   "probability": { "CN": 0.72, "MCI": 0.28, "AD": 0.0 },
-     *   "report": "이 환자는..."
-     * }
-     */
+    /** ---------------- AI 서버 CSV 업로드 ---------------- **/
     private Map<String, Object> sendToAiServer(File mmseCsv, File basicCsv) {
 
         RestTemplate rest = new RestTemplate();
@@ -153,39 +141,18 @@ public class AiController {
         return response.getBody();
     }
 
-    @Value("${GEMINI_API_KEY}")
-    private String geminiApiKey;
-
+    /** ---------------- Gemini 텍스트 호출 (fromText 안 씀) ---------------- **/
     private String callGemini(String prompt) {
         try {
-            RestTemplate rest = new RestTemplate();
+            // GeminiGradeController의 텍스트 호출 방식과 동일하게, 그냥 String 프롬프트를 넘김
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .responseMimeType("text/plain")
+                    .build();
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key="
-                    + geminiApiKey;
+            GenerateContentResponse response =
+                    genAIClient.models.generateContent(geminiModel, prompt, config);
 
-            Map<String, Object> requestBody = Map.of(
-                    "contents", new Object[]{
-                            Map.of("parts", new Object[]{
-                                    Map.of("text", prompt)
-                            })
-                    }
-            );
-
-            ResponseEntity<Map> response =
-                    rest.postForEntity(url, requestBody, Map.class);
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) return "Gemini 응답 없음";
-
-            // candidates -> content -> parts -> text
-            var candidates = (java.util.List<Map>) body.get("candidates");
-            if (candidates == null || candidates.isEmpty()) return "Gemini 후보 없음";
-
-            var content = (Map<String, Object>) candidates.get(0).get("content");
-            var parts = (java.util.List<Map>) content.get("parts");
-            var text = (String) parts.get(0).get("text");
-
-            return text;
+            return response.text().trim();
 
         } catch (Exception e) {
             return "Gemini 호출 오류: " + e.getMessage();
