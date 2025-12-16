@@ -16,6 +16,10 @@ import org.springframework.util.LinkedMultiValueMap;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -78,7 +82,6 @@ public class AiController {
             String prompt = (promptObj != null) ? String.valueOf(promptObj) : null;
 
             if (prompt == null || prompt.isBlank()) {
-                // 프롬프트가 없으면 Gemini를 호출할 수 없으므로 바로 에러 반환
                 return ResponseEntity
                         .status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of(
@@ -87,8 +90,11 @@ public class AiController {
                         ));
             }
 
+            // ✅ 3.5) 프롬프트에 '오늘 작성일' 지시문 추가 + 프롬프트 내 모든 날짜를 오늘로 치환
+            String patchedPrompt = preparePromptForToday(prompt);
+
             // 4) Gemini 호출하여 소견서 생성
-            String llmReport = callGemini(prompt);
+            String llmReport = callGemini(patchedPrompt);
 
             return ResponseEntity.ok(Map.of(
                     "model_result", aiResult,
@@ -101,6 +107,41 @@ public class AiController {
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("통합 진단 처리 중 오류가 발생했습니다: " + e.getMessage());
         }
+    }
+
+    /** ---------------- 프롬프트: 오늘 날짜 강제 ---------------- **/
+    private String preparePromptForToday(String prompt) {
+        if (prompt == null) return null;
+
+        ZoneId kst = ZoneId.of("Asia/Seoul");
+        LocalDate today = LocalDate.now(kst);
+
+        // 예: 2025년 12월 16일
+        String todayKo = today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN));
+        // 예: 2025-12-16
+        String todayIso = today.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        // (1) 프롬프트 맨 위에 지시문 1줄(몇 줄) 추가
+        String prefix =
+                "### 작성일: " + todayKo + "\n" +
+                        "- 아래 내용을 바탕으로 소견서를 작성하되, 날짜 표기는 반드시 작성일(오늘) 기준으로 작성하세요.\n" +
+                        "- 입력에 과거 날짜가 포함되어 있더라도, 소견서에는 작성일(오늘) 기준으로 표기하세요.\n\n";
+
+        // 중복 방지(이미 넣었으면 또 안 넣음)
+        if (!prompt.startsWith("### 작성일:")) {
+            prompt = prefix + prompt;
+        }
+
+        // (2) 프롬프트 내부에 있는 날짜 표현을 "전부" 오늘로 치환
+        // 2-1) "23년 10월 27일", "2023년10월27일" 같은 한글 날짜
+        String koreanDatePattern = "(?<!\\d)(?:\\d{2}|\\d{4})\\s*년\\s*\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일(?!\\d)";
+        prompt = prompt.replaceAll(koreanDatePattern, todayKo);
+
+        // 2-2) "2023-10-27", "2023.10.27", "2023/10/27", "23-10-27" 같은 구분자 날짜
+        String numericDatePattern = "(?<!\\d)(?:\\d{2}|\\d{4})[-./]\\d{1,2}[-./]\\d{1,2}(?!\\d)";
+        prompt = prompt.replaceAll(numericDatePattern, todayIso);
+
+        return prompt;
     }
 
     /** ---------------- CSV 생성 (MMSE) ---------------- **/
@@ -186,6 +227,8 @@ public class AiController {
     /** ---------------- Gemini 텍스트 호출 (fromText 안 씀) ---------------- **/
     private String callGemini(String prompt) {
         try {
+            // 프롬프트가 길면 로그가 너무 커질 수 있어서 길이만 찍고 싶으면 아래로 바꿔도 됨
+            // log.info("Gemini 호출 프롬프트 길이: {}", (prompt != null ? prompt.length() : 0));
             log.info("Gemini 호출 프롬프트: {}", prompt);
 
             if (prompt == null || prompt.isBlank()) {
@@ -218,5 +261,4 @@ public class AiController {
             return "Gemini 호출 오류: " + e.getMessage();
         }
     }
-
 }
