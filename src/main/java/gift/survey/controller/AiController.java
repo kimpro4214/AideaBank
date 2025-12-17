@@ -36,10 +36,12 @@ public class AiController {
     private String aiServerUrl;
 
     @Value("${GEMINI_API_KEY}")
-    private String geminiApiKey; // 지금 구조에선 안 써도 되지만 남겨둠
+    private String geminiApiKey; // 현재 구조에서는 직접 사용하지 않음
 
     /**
      * 📌 전체 통합 진단 API
+     * ⚠️ 주의: 이 컨트롤러는 "소견서 생성 전용 Gemini"만 사용한다.
+     * ⚠️ MMSE 채점용 Gemini 프롬프트와 절대 공유 금지
      */
     @PostMapping("/diagnose")
     public ResponseEntity<?> diagnose(@CookieValue("user_id") String userId) {
@@ -90,10 +92,10 @@ public class AiController {
                         ));
             }
 
-            // ✅ 3.5) 프롬프트에 '오늘 작성일' 지시문 추가 + 프롬프트 내 모든 날짜를 오늘로 치환
-            String patchedPrompt = preparePromptForToday(prompt);
+            // ✅ 소견서 전용 프롬프트 가공 (MMSE 채점과 절대 공유 금지)
+            String patchedPrompt = prepareReportPromptForToday(prompt);
 
-            // 4) Gemini 호출하여 소견서 생성
+            // 4) Gemini 호출 → 소견서 생성
             String llmReport = callGemini(patchedPrompt);
 
             return ResponseEntity.ok(Map.of(
@@ -109,101 +111,95 @@ public class AiController {
         }
     }
 
-    /** ---------------- 프롬프트: 오늘 날짜 강제 ---------------- **/
-    private String preparePromptForToday(String prompt) {
+    /**
+     * ---------------- 소견서 전용 프롬프트 가공 ----------------
+     * ⚠️ MMSE 채점용 Gemini에서는 절대 사용 금지
+     */
+    private String prepareReportPromptForToday(String prompt) {
         if (prompt == null) return null;
 
         ZoneId kst = ZoneId.of("Asia/Seoul");
         LocalDate today = LocalDate.now(kst);
 
-        // 예: 2025년 12월 16일
-        String todayKo = today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN));
-        // 예: 2025-12-16
+        String todayKo = today.format(
+                DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN)
+        );
         String todayIso = today.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        // (1) 프롬프트 맨 위에 지시문 1줄(몇 줄) 추가
         String prefix =
                 "### 작성일: " + todayKo + "\n" +
                         "- 아래 내용을 바탕으로 소견서를 작성하되, 날짜 표기는 반드시 작성일(오늘) 기준으로 작성하세요.\n" +
                         "- 입력에 과거 날짜가 포함되어 있더라도, 소견서에는 작성일(오늘) 기준으로 표기하세요.\n\n";
 
-        // 중복 방지(이미 넣었으면 또 안 넣음)
         if (!prompt.startsWith("### 작성일:")) {
             prompt = prefix + prompt;
         }
 
-        // (2) 프롬프트 내부에 있는 날짜 표현을 "전부" 오늘로 치환
-        // 2-1) "23년 10월 27일", "2023년10월27일" 같은 한글 날짜
-        String koreanDatePattern = "(?<!\\d)(?:\\d{2}|\\d{4})\\s*년\\s*\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일(?!\\d)";
+        // 한글 날짜 치환
+        String koreanDatePattern =
+                "(?<!\\d)(?:\\d{2}|\\d{4})\\s*년\\s*\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일(?!\\d)";
         prompt = prompt.replaceAll(koreanDatePattern, todayKo);
 
-        // 2-2) "2023-10-27", "2023.10.27", "2023/10/27", "23-10-27" 같은 구분자 날짜
-        String numericDatePattern = "(?<!\\d)(?:\\d{2}|\\d{4})[-./]\\d{1,2}[-./]\\d{1,2}(?!\\d)";
+        // 숫자 날짜 치환
+        String numericDatePattern =
+                "(?<!\\d)(?:\\d{2}|\\d{4})[-./]\\d{1,2}[-./]\\d{1,2}(?!\\d)";
         prompt = prompt.replaceAll(numericDatePattern, todayIso);
 
         return prompt;
     }
 
-    /** ---------------- CSV 생성 (MMSE) ---------------- **/
+    /** ---------------- CSV 생성 (MMSE) ---------------- */
     private File createMmseCsv(String userId, Map<String, Integer> mmseScores) {
         try {
             File file = new File("/home/ubuntu/tmp/mmse_" + userId + ".csv");
             file.getParentFile().mkdirs();
 
-            FileWriter writer = new FileWriter(file);
-
-            writer.write("mmse-1,mmse-2,mmse-3,mmse-4,mmse-5,mmse-6,mmse-7,mmse-8,mmse-9,mmse-10,mmse-11,mmse-12\n");
-
-            writer.write(
-                    mmseScores.get("mmse-1") + "," +
-                            mmseScores.get("mmse-2") + "," +
-                            mmseScores.get("mmse-3") + "," +
-                            mmseScores.get("mmse-4") + "," +
-                            mmseScores.get("mmse-5") + "," +
-                            mmseScores.get("mmse-6") + "," +
-                            mmseScores.get("mmse-7") + "," +
-                            mmseScores.get("mmse-8") + "," +
-                            mmseScores.get("mmse-9") + "," +
-                            mmseScores.get("mmse-10") + "," +
-                            mmseScores.get("mmse-11") + "," +
-                            mmseScores.get("mmse-12") + "\n"
-            );
-
-            writer.close();
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write("mmse-1,mmse-2,mmse-3,mmse-4,mmse-5,mmse-6,mmse-7,mmse-8,mmse-9,mmse-10,mmse-11,mmse-12\n");
+                writer.write(
+                        mmseScores.get("mmse-1") + "," +
+                                mmseScores.get("mmse-2") + "," +
+                                mmseScores.get("mmse-3") + "," +
+                                mmseScores.get("mmse-4") + "," +
+                                mmseScores.get("mmse-5") + "," +
+                                mmseScores.get("mmse-6") + "," +
+                                mmseScores.get("mmse-7") + "," +
+                                mmseScores.get("mmse-8") + "," +
+                                mmseScores.get("mmse-9") + "," +
+                                mmseScores.get("mmse-10") + "," +
+                                mmseScores.get("mmse-11") + "," +
+                                mmseScores.get("mmse-12") + "\n"
+                );
+            }
             return file;
         } catch (Exception e) {
-            log.error("MMSE CSV 생성 실패", e);
             throw new RuntimeException("MMSE CSV 생성 실패", e);
         }
     }
 
-    /** ---------------- CSV 생성 (BASIC) ---------------- **/
+    /** ---------------- CSV 생성 (BASIC) ---------------- */
     private File createBasicCsv(String userId, Map<String, Object> basic) {
         try {
             File file = new File("/home/ubuntu/tmp/basic_" + userId + ".csv");
             file.getParentFile().mkdirs();
 
-            FileWriter writer = new FileWriter(file);
-            writer.write("PHC_Age_Cognition,PHC_Sex,PHC_Race,PHC_Education\n");
-
-            writer.write(
-                    basic.get("age_cognition") + "," +
-                            basic.get("sex") + "," +
-                            basic.get("race") + "," +
-                            basic.get("education") + "\n"
-            );
-
-            writer.close();
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write("PHC_Age_Cognition,PHC_Sex,PHC_Race,PHC_Education\n");
+                writer.write(
+                        basic.get("age_cognition") + "," +
+                                basic.get("sex") + "," +
+                                basic.get("race") + "," +
+                                basic.get("education") + "\n"
+                );
+            }
             return file;
         } catch (Exception e) {
-            log.error("BASIC CSV 생성 실패", e);
             throw new RuntimeException("BASIC CSV 생성 실패", e);
         }
     }
 
-    /** ---------------- AI 서버 CSV 업로드 ---------------- **/
+    /** ---------------- AI 서버 CSV 업로드 ---------------- */
     private Map<String, Object> sendToAiServer(File mmseCsv, File basicCsv) {
-
         RestTemplate rest = new RestTemplate();
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -219,21 +215,13 @@ public class AiController {
         ResponseEntity<Map> response =
                 rest.exchange(aiServerUrl, HttpMethod.POST, request, Map.class);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> result = response.getBody();
-        return result;
+        return response.getBody();
     }
 
-    /** ---------------- Gemini 텍스트 호출 (fromText 안 씀) ---------------- **/
+    /** ---------------- Gemini 호출 (소견서 전용) ---------------- */
     private String callGemini(String prompt) {
         try {
-            // 프롬프트가 길면 로그가 너무 커질 수 있어서 길이만 찍고 싶으면 아래로 바꿔도 됨
-            // log.info("Gemini 호출 프롬프트 길이: {}", (prompt != null ? prompt.length() : 0));
-            log.info("Gemini 호출 프롬프트: {}", prompt);
-
-            if (prompt == null || prompt.isBlank()) {
-                return "Gemini 호출 실패: 프롬프트가 비어 있습니다.";
-            }
+            log.info("Gemini 소견서 프롬프트 호출");
 
             GenerateContentConfig config = GenerateContentConfig.builder()
                     .responseMimeType("text/plain")
@@ -242,22 +230,11 @@ public class AiController {
             GenerateContentResponse response =
                     genAIClient.models.generateContent(geminiModel, prompt, config);
 
-            if (response == null) {
-                log.warn("Gemini 응답이 null입니다.");
-                return "Gemini 응답이 null입니다.";
-            }
-
-            String text = response.text();
-            log.info("Gemini 응답 text: {}", text);
-
-            if (text == null || text.isBlank()) {
-                return "Gemini가 빈 응답을 반환했습니다.";
-            }
-
-            return text.trim();
+            return (response != null && response.text() != null)
+                    ? response.text().trim()
+                    : "Gemini 응답이 비어 있습니다.";
 
         } catch (Exception e) {
-            log.error("Gemini 호출 중 오류 발생", e);
             return "Gemini 호출 오류: " + e.getMessage();
         }
     }

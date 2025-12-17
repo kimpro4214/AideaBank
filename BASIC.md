@@ -25,3 +25,21 @@
 ```
 { "status": "saved" }
 ```
+---
+
+기본 설문 조회 (BASIC)
+
+GET /api/surveys/basic
+
+저장된 Basic 설문 데이터를 조회하는 API.
+
+Response (200 OK)
+```
+{
+  "age_cognition": 70,
+  "sex": 1,
+  "race": 0,
+  "education": 12
+}
+```
+
